@@ -1,0 +1,37 @@
+from typing import Dict, List
+
+from palantir.clock import Clock
+from palantir.ithil import Ithil
+from palantir.liquidator import Liquidator
+from palantir.oracle import PriceOracle
+from palantir.trader import Trader
+from palantir.types import Currency
+
+
+class Simulation:
+    clock: Clock
+    currencies: List[Currency]
+    ithil: Ithil
+    liquidators: List[Liquidator]
+    traders: List[Trader]
+
+    def __init__(
+        self,
+        clock: Clock,
+        currencies: List[Currency],
+        ithil: Ithil,
+        liquidators: List[Liquidator],
+        traders: List[Trader],
+    ):
+        self.clock = clock
+        self.currencies = currencies
+        self.ithil = ithil
+        self.liquidators = liquidators
+        self.traders = traders
+
+    def run(self) -> None:
+        for trader in self.traders:
+            trader.trade()
+        for liquidator in self.liquidators:
+            liquidator.liquidate()
+        self.clock.advance()

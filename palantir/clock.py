@@ -1,10 +1,7 @@
 class Clock:
     _time: int = 0
 
-    def tick(self) -> None:
-        self._time += 1
-
-    def tock(self) -> None:
+    def advance(self) -> None:
         self._time += 1
 
     @property

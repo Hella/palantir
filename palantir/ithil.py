@@ -1,39 +1,51 @@
 from collections import defaultdict
-from typing import Callable, Dict
+from typing import Callable, Dict, Optional
 
+from palantir.clock import Clock
 from palantir.metrics import Metric, MetricsLogger
 from palantir.oracle import PriceOracle
-from palantir.types import CoinId, Position, Price
+from palantir.types import (
+    Account,
+    Currency,
+    Position,
+    PositionId,
+    Price,
+)
 
 
 class Ithil:
+    clock: Clock
     metrics_logger: MetricsLogger
-    positions_id: int = 0
-    positions: Dict[int, Position] = {}
+    positions_id: PositionId = PositionId(0)
+    positions: Dict[PositionId, Position] = {}
+    closed_positions: Dict[PositionId, float] = {}
     price_oracle: PriceOracle
-    vaults: Dict[CoinId, float] = defaultdict(float) 
+    vaults: Dict[Currency, float] = defaultdict(float)
 
     def __init__(
         self,
         apply_fees: Callable[[float], float],
         apply_slippage: Callable[[Price], Price],
+        clock: Clock,
         metrics_logger: MetricsLogger,
         price_oracle: PriceOracle,
     ):
         self.apply_fees = apply_fees
         self.apply_slippage = apply_slippage
+        self.clock = clock
         self.metrics_logger = metrics_logger
         self.price_oracle = price_oracle
 
     def open_position(
         self,
-        trader: str, src_token: CoinId,
-        dst_token: CoinId,
-        collateral_token: CoinId,
+        trader: Account,
+        src_token: Currency,
+        dst_token: Currency,
+        collateral_token: Currency,
         collateral: float,
         principal: float,
         max_slippage_percent: float,
-    ) -> None:
+    ) -> Optional[PositionId]:
         base_price = self.price_oracle.get_price(src_token, dst_token)
 
         price = self.apply_slippage(base_price)
@@ -61,12 +73,15 @@ class Ithil:
             interest_rate=0.0,
         )
 
-        self.positions[self.positions_id] = position
-        self.positions_id += 1
+        position_id = self.positions_id
+        self.positions[position_id] = position
+        self.positions_id = PositionId(self.positions_id + 1)
         self.vaults[src_token] -= principal
 
-    def close_position(self, position_id: int) -> None:
-        position = self.positions[position_id]
+        return position_id
+
+    def close_position(self, position_id: PositionId) -> None:
+        position = self.active_positions[position_id]
 
         base_price = self.price_oracle.get_price(
             position.held_token,
@@ -114,10 +129,18 @@ class Ithil:
             self.metrics_logger.log(Metric.CLOSED_WITH_TRADER_PROFIT)
             self.vaults[position.owed_token] += position.principal
 
-        del self.positions[position_id]
+        self.closed_positions[position_id] = self.clock.time
 
-    def can_liquidate_position(self, position_id: int) -> bool:
+    @property
+    def active_positions(self) -> Dict[PositionId, Position]:
+        return {
+            position_id: position
+            for position_id, position in self.positions.items()
+            if position_id not in self.closed_positions
+        }
+
+    def can_liquidate_position(self, position_id: PositionId) -> bool:
         return True
 
-    def liquidate_position(self, position_id: int) -> None:
+    def liquidate_position(self, position_id: PositionId) -> None:
         pass

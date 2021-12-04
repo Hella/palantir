@@ -1,10 +1,17 @@
 from dataclasses import dataclass
+from typing import NewType
 
 
-CoinId = str
+Account = NewType("Account", str)
+
+
+Currency = NewType("Currency", str)
 
 
 Price = float
+
+
+PositionId = NewType("PositionId", int)
 
 
 Timestamp = int
@@ -12,10 +19,10 @@ Timestamp = int
 
 @dataclass
 class Position:
-    owner: str
-    owed_token: str
-    held_token: str
-    collateral_token: str
+    owner: Account
+    owed_token: Currency
+    held_token: Currency
+    collateral_token: Currency
     collateral: float
     principal: float
     allowance: float

@@ -1,15 +1,15 @@
 from typing import Dict, List
 
 from palantir.clock import Clock
-from palantir.types import CoinId, Price
+from palantir.types import Currency, Price
 
 
 class PriceOracle:
     clock: Clock
     max_period: int = 0
-    quotes: Dict[CoinId, List[Price]] = {}
+    quotes: Dict[Currency, List[Price]] = {}
 
-    def __init__(self, clock: Clock, quotes: Dict[CoinId, List[Price]]) -> None:
+    def __init__(self, clock: Clock, quotes: Dict[Currency, List[Price]]) -> None:
         quote_periods = [len(prices) for _, prices in quotes]
 
         assert len(set(quote_periods)) == 1, "All price quote series must have the same length"
@@ -18,7 +18,7 @@ class PriceOracle:
         self.max_period = quote_periods[0]
         self.quotes = quotes
 
-    def get_price(self, src_token: CoinId, dst_token: CoinId) -> Price:
+    def get_price(self, src_token: Currency, dst_token: Currency) -> Price:
         assert self.clock.time < self.max_period, "Simulation has ended"
 
         src_token_price = self.quotes[src_token][self.clock.time]
