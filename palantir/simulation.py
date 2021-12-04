@@ -10,7 +10,6 @@ from palantir.types import Currency
 
 class Simulation:
     clock: Clock
-    currencies: List[Currency]
     ithil: Ithil
     liquidators: List[Liquidator]
     traders: List[Trader]
@@ -18,13 +17,11 @@ class Simulation:
     def __init__(
         self,
         clock: Clock,
-        currencies: List[Currency],
         ithil: Ithil,
         liquidators: List[Liquidator],
         traders: List[Trader],
     ):
         self.clock = clock
-        self.currencies = currencies
         self.ithil = ithil
         self.liquidators = liquidators
         self.traders = traders
