@@ -140,7 +140,19 @@ class Ithil:
         }
 
     def can_liquidate_position(self, position_id: PositionId) -> bool:
-        return True
+        active_positions = self.active_positions
+
+        if position_id not in active_positions:
+            return False
+
+        position = active_positions[position_id]
+        current_value_in_owed_tokens = position.principal * self.price_oracle.get_price(
+            position.held_token,
+            position.owed_token
+        )
+
+        # XXX here we assume a fixed risk factor of 30%
+        return position.principal - current_value_in_owed_tokens > position.collateral - (30 * position.collateral / 100)
 
     def liquidate_position(self, position_id: PositionId) -> None:
         pass
