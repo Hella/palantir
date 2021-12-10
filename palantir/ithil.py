@@ -80,27 +80,19 @@ class Ithil:
 
         return position_id
 
-    def close_position(self, position_id: PositionId) -> None:
+    def close_position(self, position_id: PositionId, liquidation_fee=0.0) -> None:
         position = self.active_positions[position_id]
+        amount = self._swap(position.held_token, position.owed_token, position.allowance)
+        assert amount > 0.0, "Swap returned negative or null amount"
 
-        base_price = self.price_oracle.get_price(
-            position.held_token,
-            position.owed_token,
-        )
-
-        price = self.apply_slippage(base_price)
-
-        amount = position.allowance * price
-        assert amount > 0, "Swap with negative or null output amount"
-
-        interest = position.principal * position.interest_rate / 100
-        collateral_after_interest = position.collateral - interest
-        assert collateral_after_interest >= 0, "Not enough collateral to repay full interest"
-        self.vaults[position.owed_token] += interest
+        interest_amount = position.principal * position.interest_rate
+        collateral_after_interest = position.collateral - interest_amount
+        assert collateral_after_interest >= 0, "Collateral insufficient to pay interest"
+        self.vaults[position.owed_token] += interest_amount
         # TODO log interest amount
         # TODO log LP profit
 
-        collateral_after_interest_and_fees = self.apply_fees(collateral_after_interest)
+        collateral_after_interest_and_fees = self.apply_fees(collateral_after_interest) - liquidation_fee
         # TODO direct fees to Ithil liquidation insurance pool
         # TODO direct fees to Ithil governance token holders to account for pl of the protocol
         # TODO log LP profit if any
@@ -131,6 +123,7 @@ class Ithil:
 
         self.closed_positions[position_id] = self.clock.time
 
+
     @property
     def active_positions(self) -> Dict[PositionId, Position]:
         return {
@@ -146,13 +139,23 @@ class Ithil:
             return False
 
         position = active_positions[position_id]
-        current_value_in_owed_tokens = position.principal * self.price_oracle.get_price(
+        current_value_in_owed_tokens = self._swap(
             position.held_token,
-            position.owed_token
+            position.owed_token,
+            position.allowance,
         )
 
         # XXX here we assume a fixed risk factor of 30%
         return position.principal - current_value_in_owed_tokens > position.collateral - (30 * position.collateral / 100)
 
     def liquidate_position(self, position_id: PositionId) -> None:
-        pass
+        position = self.active_positions[position_id]
+        liquidation_fee = self._compute_liquidation_fee(position)
+        self.close_position(position_id, liquidation_fee)
+
+    def _swap(self, src_token: Currency, dst_token: Currency, src_token_amount: float) -> float:
+        price = self.price_oracle.get_price(src_token, dst_token)
+        return src_token_amount * self.apply_slippage(price)
+
+    def _compute_liquidation_fee(self, position: Position) -> float:
+        return 0.0
