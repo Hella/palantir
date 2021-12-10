@@ -29,12 +29,14 @@ class Ithil:
         clock: Clock,
         metrics_logger: MetricsLogger,
         price_oracle: PriceOracle,
+        vaults: Dict[Currency, float],
     ):
         self.apply_fees = apply_fees
         self.apply_slippage = apply_slippage
         self.clock = clock
         self.metrics_logger = metrics_logger
         self.price_oracle = price_oracle
+        self.vaults = vaults
 
     def open_position(
         self,
