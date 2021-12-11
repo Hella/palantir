@@ -27,8 +27,8 @@ class Simulation:
         self.traders = traders
 
     def run(self) -> None:
-        for trader in self.traders:
-            trader.trade()
-        for liquidator in self.liquidators:
-            liquidator.liquidate()
-        self.clock.advance()
+        while self.clock.advance():
+            for trader in self.traders:
+                trader.trade()
+            for liquidator in self.liquidators:
+                liquidator.liquidate()

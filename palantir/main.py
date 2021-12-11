@@ -66,8 +66,8 @@ def backtest():
     session = Session()
 
     # XXX number of time samples to run the simulation on
-    samples = 30
-    read_quotes_from_db = lambda token: list(
+    periods = 30
+    read_quotes_from_db = lambda token, samples: list(
         session
         .query(Quote)
         .filter(Quote.coin==token)
@@ -75,7 +75,7 @@ def backtest():
         .all()
     )[-samples:]
 
-    clock = Clock()
+    clock = Clock(periods)
     metrics_logger = MetricsLogger(clock)
     ithil=Ithil(
         apply_fees=NULL_FEES,
@@ -85,8 +85,8 @@ def backtest():
         price_oracle=PriceOracle(
             clock=clock,
             quotes={
-                Currency("dai"): read_quotes_from_db("dai"),
-                Currency("ethereum"): read_quotes_from_db("ethereum")
+                Currency("dai"): read_quotes_from_db("dai", periods),
+                Currency("ethereum"): read_quotes_from_db("ethereum", periods)
             },
         ),
         vaults={
@@ -95,7 +95,7 @@ def backtest():
         },
     )
     simulation = Simulation(
-        clock=Clock(),
+        clock=clock,
         ithil=ithil,
         liquidators=[
             Liquidator(
