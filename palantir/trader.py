@@ -15,9 +15,9 @@ class Trader:
     Some traders will open/close positions very frequently, others will be more conservative.
     """
     account: Account
-    opened_positions: Set[PositionId]
-    closed_positions: Set[PositionId]
-    open_position_probability: float
+    opened_positions: Set[PositionId] = set()
+    closed_positions: Set[PositionId] = set()
+    opened_position_probability: float
     close_position_probability: float
     ithil: Ithil
 
@@ -56,8 +56,9 @@ class Trader:
             if position_id is not None:
                 # TODO log open position error
                 self.opened_positions.add(position_id)
-        if self._will_close_position():
-            position_id = random.choice(tuple(self.active_positions))
+        active_positions = self.active_positions
+        if self._will_close_position() and active_positions:
+            position_id = random.choice(tuple(active_positions))
             self.ithil.close_position(position_id)
             self.closed_positions.add(position_id)
 
