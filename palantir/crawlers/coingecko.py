@@ -1,5 +1,6 @@
 # CoinGecko API crawler
 # https://www.coingecko.com/it/api/documentation
+from datetime import datetime
 from typing import Iterable, List, Tuple
 
 import requests
@@ -37,6 +38,7 @@ def market_chart_range(
 
     prices = {} # We write everything in a dict to avoid duplicate price samples
     for start, end in date_ranges:
+        print(f"Downloading {datetime.utcfromtimestamp(start).strftime('%Y-%m-%d %H:%M:%S')} => {datetime.utcfromtimestamp(end).strftime('%Y-%m-%d %H:%M:%S')}")
         response = requests.get(
             f"{COINGEKO_BASE_URL}/coins/{coin_id}/market_chart/range?vs_currency={vs_currency}&from={start}&to={end}"
         )
