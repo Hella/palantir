@@ -43,8 +43,6 @@ def market_chart_range(
         )
         data = response.json()
         prices.update({timestamp: price for timestamp, price in data["prices"]})
-        start += SECONDS_IN_A_DAY
-        end += SECONDS_IN_A_DAY
 
     # Sort everything by ascending timestamp before returning
     return sorted([(timestamp, price) for timestamp, price in prices.items()], key=lambda x: x[0])
