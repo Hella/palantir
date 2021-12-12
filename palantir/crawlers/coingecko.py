@@ -27,9 +27,12 @@ def market_chart_range(
 ) -> List[Tuple[Timestamp, Price]]:
     days = int((to_timestamp - from_timestamp) / SECONDS_IN_A_DAY)
     days_per_api_call = 30
-    periods = int(days / days_per_api_call)
+    periods = int(days / days_per_api_call) + 1 # Add an extra day to also download the rest
     date_ranges = [
-        (from_timestamp + n * SECONDS_IN_A_DAY, to_timestamp + (n + days_per_api_call) * SECONDS_IN_A_DAY)
+        (
+            from_timestamp + (n * days_per_api_call * SECONDS_IN_A_DAY),
+            from_timestamp + ((n + 1) * days_per_api_call * SECONDS_IN_A_DAY),
+        )
         for n in range(periods)
     ]
 
