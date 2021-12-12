@@ -48,7 +48,9 @@ class Ithil:
         principal: float,
         max_slippage_percent: float,
     ) -> Optional[PositionId]:
-        base_price = self.price_oracle.get_price(src_token, dst_token)
+        src_token_price = self.price_oracle.get_price(src_token)
+        dst_token_price = self.price_oracle.get_price(dst_token)
+        base_price = src_token_price / dst_token_price
 
         price = self.apply_slippage(base_price)
 
@@ -156,7 +158,11 @@ class Ithil:
         self.close_position(position_id, liquidation_fee)
 
     def _swap(self, src_token: Currency, dst_token: Currency, src_token_amount: float) -> float:
-        price = self.price_oracle.get_price(src_token, dst_token)
+        src_token_price = self.price_oracle.get_price(src_token)
+        dst_token_price = self.price_oracle.get_price(dst_token)
+
+        price = src_token_price / dst_token_price
+
         return src_token_amount * self.apply_slippage(price)
 
     def _compute_liquidation_fee(self, position: Position) -> float:

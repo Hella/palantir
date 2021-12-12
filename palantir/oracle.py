@@ -17,8 +17,5 @@ class PriceOracle:
         self.clock = clock
         self.quotes = quotes
 
-    def get_price(self, src_token: Currency, dst_token: Currency) -> Price:
-        src_token_price = self.quotes[src_token][self.clock.time].price
-        dst_token_price = self.quotes[dst_token][self.clock.time].price
-
-        return src_token_price / dst_token_price
+    def get_price(self, token: Currency) -> Price:
+        return self.quotes[token][self.clock.time].price
