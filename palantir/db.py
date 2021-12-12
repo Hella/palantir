@@ -1,4 +1,5 @@
 from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import (
@@ -27,4 +28,7 @@ def init_db():
 
     Base.metadata.create_all(engine)
 
-    return engine
+    Session = sessionmaker(bind=engine)
+    session = Session()
+
+    return session

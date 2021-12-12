@@ -8,7 +8,6 @@ from sqlalchemy.orm import sessionmaker
 from palantir.crawlers.coingecko import (
     coin_ids,
     Interval,
-    market_chart,
     market_chart_range,
 )
 from palantir.clock import Clock
@@ -62,25 +61,19 @@ def crawl():
 
     db = init_db()
 
-    Session = sessionmaker(bind=db)
-    session = Session()
-
     for quote in quotes:
-        session.add(quote)
+        db.add(quote)
 
-    session.commit()
+    db.commit()
 
 
 def backtest():
     db = init_db()
 
-    Session = sessionmaker(bind=db)
-    session = Session()
-
     # XXX number of time samples to run the simulation on
     periods = 1000
     read_quotes_from_db = lambda token, samples: list(
-        session
+        db
         .query(Quote)
         .filter(Quote.coin==token)
         .order_by(Quote.timestamp)
