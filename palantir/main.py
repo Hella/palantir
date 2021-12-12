@@ -1,3 +1,4 @@
+import time
 from random import gauss, uniform
 from typing import List
 
@@ -8,9 +9,14 @@ from palantir.crawlers.coingecko import (
     coin_ids,
     Interval,
     market_chart,
+    market_chart_range,
 )
 from palantir.clock import Clock
-from palantir.constants import GAUSS_RANDOM_SLIPPAGE, NULL_FEES
+from palantir.constants import (
+    GAUSS_RANDOM_SLIPPAGE,
+    NULL_FEES,
+    SECONDS_IN_A_DAY,
+)
 from palantir.db import init_db, Quote
 from palantir.ithil import Ithil
 from palantir.liquidator import Liquidator
@@ -18,10 +24,10 @@ from palantir.metrics import MetricsLogger
 from palantir.oracle import PriceOracle
 from palantir.simulation import Simulation
 from palantir.trader import Trader
-from palantir.types import Account, Currency
+from palantir.types import Account, Currency, Timestamp
 
 
-VS_CURRENCY = "usd"
+VS_CURRENCY = Currency("usd")
 
 
 def crawl():
@@ -41,7 +47,13 @@ def crawl():
 
     days = args.days
 
-    prices = market_chart(token, VS_CURRENCY, days, Interval.DAILY)
+    now = Timestamp(time.time())
+    prices = market_chart_range(
+        coin_id=token,
+        vs_currency=VS_CURRENCY,
+        from_timestamp=now - days * SECONDS_IN_A_DAY,
+        to_timestamp=now,
+    )
 
     quotes = [
         Quote(coin=token, vs_currency=VS_CURRENCY, timestamp=timestamp, price=price)
@@ -66,7 +78,7 @@ def backtest():
     session = Session()
 
     # XXX number of time samples to run the simulation on
-    periods = 30
+    periods = 1000
     read_quotes_from_db = lambda token, samples: list(
         session
         .query(Quote)
@@ -110,7 +122,7 @@ def backtest():
                 open_position_probability=0.1,
                 close_position_probability=0.3,
                 ithil=ithil,
-                calculate_collateral=lambda: abs(gauss(mu=3000, sigma=5000)) + 100.0,
+                calculate_collateral_usd=lambda: abs(gauss(mu=3000, sigma=5000)) + 100.0,
                 calculate_leverage=lambda: uniform(1.0, 10.0),
             ),
         ],

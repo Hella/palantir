@@ -1,10 +1,13 @@
+# CoinGecko API crawler
+# https://www.coingecko.com/it/api/documentation
 from enum import Enum
 from typing import Iterable, List, Tuple
 
 import requests
 
 
-from palantir.types import Price, Timestamp
+from palantir.constants import SECONDS_IN_A_DAY
+from palantir.types import Currency, Price, Timestamp
 
 
 COINGEKO_BASE_URL = "https://api.coingecko.com/api/v3"
@@ -23,19 +26,30 @@ class Interval(Enum):
     DAILY = "daily"
 
 
-def market_chart(
-    coin_id: str,
-    vs_currency: str,
-    days: int,
-    interval: Interval,
+def market_chart_range(
+    coin_id: Currency,
+    vs_currency: Currency,
+    from_timestamp: Timestamp,
+    to_timestamp: Timestamp,
 ) -> List[Tuple[Timestamp, Price]]:
-    response = requests.get(
-        f"{COINGEKO_BASE_URL}/coins/{coin_id}/market_chart?vs_currency={vs_currency}&days={days}&interval={interval}"
-    )
-    data = response.json()
+    days = int((to_timestamp - from_timestamp) / SECONDS_IN_A_DAY)
+    days_per_api_call = 30
+    periods = int(days / days_per_api_call)
+    date_ranges = [
+        (from_timestamp + n * SECONDS_IN_A_DAY, to_timestamp + (n + days_per_api_call) * SECONDS_IN_A_DAY)
+        for n in range(periods)
+    ]
 
-    prices = data["prices"]
-    _market_caps = data["market_caps"]
-    _total_volumes = data["total_volumes"]
+    prices = {} # We write everything in a dict to avoid duplicate price samples
+    for start, end in date_ranges:
+        response = requests.get(
+            f"{COINGEKO_BASE_URL}/coins/{coin_id}/market_chart/range?vs_currency={vs_currency}&from={start}&to={end}"
+        )
+        data = response.json()
+        prices.update({timestamp: price for timestamp, price in data["prices"]})
+        start += SECONDS_IN_A_DAY
+        end += SECONDS_IN_A_DAY
 
-    return prices
+    # Sort everything by ascending timestamp before returning
+    return sorted([(timestamp, price) for timestamp, price in prices.items()], key=lambda x: x[0])
+
