@@ -9,3 +9,5 @@ GAUSS_RANDOM_SLIPPAGE = lambda price: gauss(price, price * DESIRED_MAX_SLIPPAGE_
 
 # We model fees as a 0% flat rate
 NULL_FEES = lambda amount: amount - amount * 0.0 / 100
+
+SECONDS_IN_A_DAY = 24 * 60 * 60
