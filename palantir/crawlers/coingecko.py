@@ -46,4 +46,3 @@ def market_chart_range(
 
     # Sort everything by ascending timestamp before returning
     return sorted([(timestamp, price) for timestamp, price in prices.items()], key=lambda x: x[0])
-
