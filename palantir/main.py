@@ -26,7 +26,7 @@ from palantir.types import Account, Currency, Timestamp
 VS_CURRENCY = Currency("usd")
 
 
-def crawl():
+def run_crawler():
     """
     Download price data for coin `token` for the last `days` days from Coingeko API
     """
@@ -64,7 +64,7 @@ def crawl():
     db.commit()
 
 
-def backtest():
+def run_simulation():
     db = init_db()
 
     # XXX number of time samples to run the simulation on

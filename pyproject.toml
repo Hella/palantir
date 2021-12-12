@@ -14,8 +14,8 @@ SQLAlchemy = "^1.4.27"
 pytest = "^5.2"
 
 [tool.poetry.scripts]
-crawler = "palantir.main:crawl"
-simulation = "palantir.main:backtest"
+crawler = "palantir.main:run_crawler"
+simulation = "palantir.main:run_simulation"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
