@@ -4,6 +4,7 @@ from typing import Callable, Set
 from palantir.ithil import Ithil
 from palantir.types import (
     Account,
+    Currency,
     PositionId,
 )
 
@@ -27,7 +28,7 @@ class Trader:
         open_position_probability: float,
         close_position_probability: float,
         ithil: Ithil,
-        calculate_collateral_usd: Callable[[], float],
+        calculate_collateral_usd: Callable[[Currency], float],
         calculate_leverage: Callable[[], float],
     ):
         self.account = account
@@ -42,7 +43,7 @@ class Trader:
             tokens = set(self.ithil.vaults.keys())
             src_token = random.choice(tuple(tokens))
             dst_token = random.choice(tuple(tokens - {src_token}))
-            collateral = self.calculate_collateral_usd()
+            collateral = self.calculate_collateral_usd(src_token)
             principal = self.calculate_leverage() * collateral
             position_id = self.ithil.open_position(
                 trader=self.account,

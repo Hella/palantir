@@ -79,18 +79,19 @@ def run_simulation():
 
     clock = Clock(periods)
     metrics_logger = MetricsLogger(clock)
+    price_oracle = PriceOracle(
+        clock=clock,
+        quotes={
+            Currency("dai"): read_quotes_from_db("dai", periods),
+            Currency("ethereum"): read_quotes_from_db("ethereum", periods)
+        },
+    )
     ithil=Ithil(
         apply_fees=NULL_FEES,
         apply_slippage=GAUSS_RANDOM_SLIPPAGE,
         clock=clock,
         metrics_logger=metrics_logger,
-        price_oracle=PriceOracle(
-            clock=clock,
-            quotes={
-                Currency("dai"): read_quotes_from_db("dai", periods),
-                Currency("ethereum"): read_quotes_from_db("ethereum", periods)
-            },
-        ),
+        price_oracle=price_oracle,
         vaults={
             Currency("dai"): 750000.0,
             Currency("ethereum"): 300.0,
@@ -112,7 +113,7 @@ def run_simulation():
                 open_position_probability=0.1,
                 close_position_probability=0.3,
                 ithil=ithil,
-                calculate_collateral_usd=lambda: abs(gauss(mu=3000, sigma=5000)) + 100.0,
+                calculate_collateral_usd=lambda token: (abs(gauss(mu=3000, sigma=5000)) + 100.0) / price_oracle.get_price(token),
                 calculate_leverage=lambda: uniform(1.0, 10.0),
             ),
         ],
