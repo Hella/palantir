@@ -27,11 +27,11 @@ class Trader:
         open_position_probability: float,
         close_position_probability: float,
         ithil: Ithil,
-        calculate_collateral: Callable[[], float],
+        calculate_collateral_usd: Callable[[], float],
         calculate_leverage: Callable[[], float],
     ):
         self.account = account
-        self.calculate_collateral = calculate_collateral
+        self.calculate_collateral_usd = calculate_collateral_usd
         self.calculate_leverage = calculate_leverage
         self.open_position_probability = open_position_probability
         self.close_position_probability = close_position_probability
@@ -42,7 +42,7 @@ class Trader:
             tokens = set(self.ithil.vaults.keys())
             src_token = random.choice(tuple(tokens))
             dst_token = random.choice(tuple(tokens - {src_token}))
-            collateral = self.calculate_collateral()
+            collateral = self.calculate_collateral_usd()
             principal = self.calculate_leverage() * collateral
             position_id = self.ithil.open_position(
                 trader=self.account,
