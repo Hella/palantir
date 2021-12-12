@@ -20,12 +20,6 @@ def coin_ids() -> Iterable[str]:
         yield coin["id"]
 
 
-class Interval(Enum):
-    MINUTELY = "minutely"
-    HOURLY = "hourly"
-    DAILY = "daily"
-
-
 def market_chart_range(
     coin_id: Currency,
     vs_currency: Currency,

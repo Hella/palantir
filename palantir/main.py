@@ -1,13 +1,10 @@
 import time
 from random import gauss, uniform
-from typing import List
 
 from argparse import ArgumentParser
-from sqlalchemy.orm import sessionmaker
 
 from palantir.crawlers.coingecko import (
     coin_ids,
-    Interval,
     market_chart_range,
 )
 from palantir.clock import Clock
