@@ -5,7 +5,6 @@ from typing import Iterable, List, Tuple
 
 import requests
 
-
 from palantir.constants import SECONDS_IN_A_DAY
 from palantir.types import Currency, Price, Timestamp
 
