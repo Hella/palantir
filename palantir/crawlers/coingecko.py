@@ -1,6 +1,5 @@
 # CoinGecko API crawler
 # https://www.coingecko.com/it/api/documentation
-from enum import Enum
 from typing import Iterable, List, Tuple
 
 import requests
