@@ -11,7 +11,7 @@ from palantir.clock import Clock
 from palantir.constants import (
     GAUSS_RANDOM_SLIPPAGE,
     NULL_FEES,
-    SECONDS_IN_A_DAY,
+    SECONDS_IN_AN_HOUR,
 )
 from palantir.db import init_db, Quote
 from palantir.ithil import Ithil
@@ -24,6 +24,33 @@ from palantir.types import Account, Currency, Timestamp
 
 
 VS_CURRENCY = Currency("usd")
+
+
+def download_price_data(token: Currency, hours: int) -> None:
+    valid_coin_ids = list(coin_ids())
+    valid_coin_ids_msg = f"Coin should be one of {valid_coin_ids}"
+
+    assert token in valid_coin_ids, valid_coin_ids_msg
+
+    now = Timestamp(time.time())
+    prices = market_chart_range(
+        coin_id=token,
+        vs_currency=VS_CURRENCY,
+        from_timestamp=now - hours * SECONDS_IN_AN_HOUR,
+        to_timestamp=now,
+    )
+
+    quotes = [
+        Quote(coin=token, vs_currency=VS_CURRENCY, timestamp=timestamp, price=price)
+        for timestamp, price in prices
+    ]
+
+    db = init_db()
+
+    for quote in quotes:
+        db.add(quote)
+
+    db.commit()
 
 
 def run_crawler():
@@ -43,32 +70,14 @@ def run_crawler():
 
     days = args.days
 
-    now = Timestamp(time.time())
-    prices = market_chart_range(
-        coin_id=token,
-        vs_currency=VS_CURRENCY,
-        from_timestamp=now - days * SECONDS_IN_A_DAY,
-        to_timestamp=now,
-    )
-
-    quotes = [
-        Quote(coin=token, vs_currency=VS_CURRENCY, timestamp=timestamp, price=price)
-        for timestamp, price in prices
-    ]
-
-    db = init_db()
-
-    for quote in quotes:
-        db.add(quote)
-
-    db.commit()
+    download_price_data(token=token, hours=days * 24)
 
 
 def run_simulation():
     db = init_db()
 
     # XXX number of time samples to run the simulation on
-    periods = 1000
+    periods = 2000
     read_quotes_from_db = lambda token, samples: list(
         db
         .query(Quote)
@@ -111,7 +120,7 @@ def run_simulation():
             Trader(
                 account=Account("aaaaa"),
                 open_position_probability=0.1,
-                close_position_probability=0.3,
+                close_position_probability=0.2,
                 ithil=ithil,
                 calculate_collateral_usd=lambda token: (abs(gauss(mu=3000, sigma=5000)) + 100.0) / price_oracle.get_price(token),
                 calculate_leverage=lambda: uniform(1.0, 10.0),
