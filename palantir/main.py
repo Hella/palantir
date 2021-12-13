@@ -1,5 +1,6 @@
 import time
 from random import gauss, uniform
+from typing import Iterable, List
 
 from argparse import ArgumentParser
 
@@ -13,7 +14,7 @@ from palantir.constants import (
     NULL_FEES,
     SECONDS_IN_AN_HOUR,
 )
-from palantir.db import init_db, Quote
+from palantir.db import drop_all, init_db, Quote
 from palantir.ithil import Ithil
 from palantir.liquidator import Liquidator
 from palantir.metrics import MetricsLogger
@@ -73,26 +74,45 @@ def run_crawler():
     download_price_data(token=token, hours=days * 24)
 
 
-def run_simulation():
+def _init_db(tokens: Iterable[Currency], hours: int):
     db = init_db()
 
-    # XXX number of time samples to run the simulation on
-    periods = 2000
-    read_quotes_from_db = lambda token, samples: list(
+    if not all(db.query(Quote).filter(Quote.coin==token).count() >= hours for token in tokens):
+        db.close()
+        drop_all()
+        db = init_db()
+        for token in tokens:
+            download_price_data(token, hours)
+
+    return db
+
+
+def _read_quotes_from_db(db, token: Currency, hours: int) -> List[Quote]:
+    return list(
         db
         .query(Quote)
         .filter(Quote.coin==token)
         .order_by(Quote.timestamp)
         .all()
-    )[-samples:]
+    )[-hours:]
 
-    clock = Clock(periods)
+
+def run_simulation():
+    hours = 2000
+    tokens = (
+        Currency("bitcoin"),
+        Currency("ethereum"),
+        Currency("dai"),
+    )
+
+    db = _init_db(tokens, hours)
+
+    clock = Clock(hours)
     metrics_logger = MetricsLogger(clock)
     price_oracle = PriceOracle(
         clock=clock,
         quotes={
-            Currency("dai"): read_quotes_from_db("dai", periods),
-            Currency("ethereum"): read_quotes_from_db("ethereum", periods)
+            token: _read_quotes_from_db(db, token, hours) for token in tokens
         },
     )
     ithil=Ithil(

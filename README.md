@@ -17,13 +17,8 @@ poetry install
 
 ### Download historical data
 
-Download daily historical data for different coins using the Coingeko api.
-USD is implicitly used as vs currency (i.e. data for Ether is price in ETH/USD).
-
-```bash
-# E.g. download historical hourly price data from the past 20 days for ETH.
-poetry run crawler ethereum 20
-```
+When running a simulation Palantir will automatically download the desired price data and store it in a local SQLite database on the first run.
+The tokens used and the number of samples are specified at the beginning of `palantir.main:run_sumulation()`.
 
 ### Run a simulation
 

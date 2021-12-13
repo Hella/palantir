@@ -24,6 +24,9 @@ class Quote(Base):
 
 
 def init_db():
+    """
+    Connect to the db and if necessary initialise the schema.
+    """
     engine = create_engine('sqlite:///quotes.db', echo=True)
 
     Base.metadata.create_all(engine)
@@ -32,3 +35,11 @@ def init_db():
     session = Session()
 
     return session
+
+
+def drop_all():
+    """
+    Delete all structures in this database.
+    """
+    engine = create_engine('sqlite:///quotes.db', echo=True)
+    Base.metadata.drop_all(engine)
