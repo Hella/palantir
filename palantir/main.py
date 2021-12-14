@@ -1,3 +1,5 @@
+import logging
+import sys
 import time
 from random import gauss, uniform
 from typing import Iterable, List
@@ -27,7 +29,19 @@ from palantir.types import Account, Currency, Timestamp
 VS_CURRENCY = Currency("usd")
 
 
+def setup_logger() -> None:
+    root = logging.getLogger()
+    root.setLevel(logging.INFO)
+
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setLevel(logging.INFO)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    handler.setFormatter(formatter)
+    root.addHandler(handler)
+
+
 def download_price_data(token: Currency, hours: int) -> None:
+    logging.info(f"Download {hours} price points for {token}")
     valid_coin_ids = list(coin_ids())
     valid_coin_ids_msg = f"Coin should be one of {valid_coin_ids}"
 
@@ -104,6 +118,8 @@ def run_simulation():
         Currency("ethereum"),
         Currency("dai"),
     )
+
+    setup_logger()
 
     db = _init_db(tokens, hours)
 

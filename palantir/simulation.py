@@ -1,3 +1,4 @@
+import logging
 from typing import Dict, List
 
 from palantir.clock import Clock
@@ -28,6 +29,7 @@ class Simulation:
 
     def run(self) -> None:
         while self.clock.advance():
+            logging.info(f"TIME: {self.clock._time}")
             for trader in self.traders:
                 trader.trade()
             for liquidator in self.liquidators:

@@ -1,3 +1,4 @@
+import logging
 from collections import defaultdict
 from typing import Callable, Dict, Optional
 
@@ -82,6 +83,8 @@ class Ithil:
         self.positions_id = PositionId(self.positions_id + 1)
         self.vaults[src_token] -= principal
 
+        logging.info(f"OpenPosition\t => {position}")
+
         return position_id
 
     def close_position(self, position_id: PositionId, liquidation_fee=0.0) -> None:
@@ -125,6 +128,9 @@ class Ithil:
             self.metrics_logger.log(Metric.CLOSED_WITH_TRADER_PROFIT)
             self.vaults[position.owed_token] += position.principal
 
+        if liquidation_fee == 0.0:
+            logging.info(f"ClosePosition\t => {position}")
+
         self.closed_positions[position_id] = self.clock.time
 
 
@@ -156,6 +162,7 @@ class Ithil:
         position = self.active_positions[position_id]
         liquidation_fee = self._compute_liquidation_fee(position)
         self.close_position(position_id, liquidation_fee)
+        logging.info(f"LiquidatePosition\t => {position}")
 
     def _swap(self, src_token: Currency, dst_token: Currency, src_token_amount: float) -> float:
         src_token_price = self.price_oracle.get_price(src_token)
