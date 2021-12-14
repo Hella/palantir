@@ -29,3 +29,25 @@ Once you have downloaded the price data and configured your simulation just do
 ```bash
 poetry run simulation
 ```
+
+### Run unit tests
+
+We use Pytest to run tests. Just run the following commands to execute unit tests in a virtual environment.
+
+Activate Poetry's virtual environment
+
+```bash
+poetry shell
+```
+
+Run Pytest's unit tests
+
+```bash
+pytest
+```
+
+Deactivate the virtual environment
+
+```bash
+exit
+```
