@@ -18,7 +18,7 @@ class Trader:
     account: Account
     opened_positions: Set[PositionId] = set()
     closed_positions: Set[PositionId] = set()
-    opened_position_probability: float
+    open_position_probability: float
     close_position_probability: float
     ithil: Ithil
 
