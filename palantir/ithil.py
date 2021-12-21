@@ -62,7 +62,7 @@ class Ithil:
 
         allowance = principal * price
 
-        if self.vaults[dst_token] < principal:
+        if self.vaults[src_token] < principal:
             self.metrics_logger.log(Metric.TRADE_FAILED)
             self.metrics_logger.log(Metric.INSUFFICIENT_LIQUIDITY)
             return
