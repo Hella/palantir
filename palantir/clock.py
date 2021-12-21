@@ -5,7 +5,7 @@ class Clock:
     def __init__(self, periods: int):
         self._periods = periods
 
-    def advance(self) -> bool:
+    def step(self) -> bool:
         self._time += 1
         return self._time < self._periods
 

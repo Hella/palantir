@@ -28,7 +28,7 @@ class Simulation:
         self.traders = traders
 
     def run(self) -> None:
-        while self.clock.advance():
+        while self.clock.step():
             logging.info(f"TIME: {self.clock._time}")
             for trader in self.traders:
                 trader.trade()
