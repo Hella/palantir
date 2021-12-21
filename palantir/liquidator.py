@@ -8,6 +8,7 @@ class Liquidator:
     We model liquidators as independent agents who will try to liquidate open positions with
     a fixed probability.
     """
+
     ithil: Ithil
     liquidation_probability: float
 

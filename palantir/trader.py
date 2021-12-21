@@ -15,6 +15,7 @@ class Trader:
     according to a fixed probability.
     Some traders will open/close positions very frequently, others will be more conservative.
     """
+
     account: Account
     opened_positions: Set[PositionId] = set()
     closed_positions: Set[PositionId] = set()
@@ -49,10 +50,10 @@ class Trader:
                 trader=self.account,
                 src_token=src_token,
                 dst_token=dst_token,
-                collateral_token=src_token, # XXX for now always use src_token as collateral
+                collateral_token=src_token,  # XXX for now always use src_token as collateral
                 collateral=collateral,
                 principal=principal,
-                max_slippage_percent=10, # XXX use a fixed 10% slippage limit
+                max_slippage_percent=10,  # XXX use a fixed 10% slippage limit
             )
             if position_id is not None:
                 # TODO log open position error
@@ -66,7 +67,7 @@ class Trader:
     @property
     def active_positions(self) -> Set[PositionId]:
         return self.opened_positions - self.closed_positions
-    
+
     def _will_open_position(self) -> bool:
         return self.open_position_probability * 100 < random.randint(0, 100)
 

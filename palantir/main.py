@@ -35,7 +35,9 @@ def setup_logger() -> None:
 
     handler = logging.StreamHandler(sys.stdout)
     handler.setLevel(logging.INFO)
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
     handler.setFormatter(formatter)
     root.addHandler(handler)
 
@@ -73,8 +75,12 @@ def run_crawler():
     Download price data for coin `token` for the last `days` days from Coingeko API
     """
     parser = ArgumentParser()
-    parser.add_argument("token", metavar="token", type=str, help="The token we need prices for")
-    parser.add_argument("days", metavar="days", type=int, help="Number of days of historical data")
+    parser.add_argument(
+        "token", metavar="token", type=str, help="The token we need prices for"
+    )
+    parser.add_argument(
+        "days", metavar="days", type=int, help="Number of days of historical data"
+    )
     args = parser.parse_args()
 
     valid_coin_ids = list(coin_ids())
@@ -91,7 +97,9 @@ def run_crawler():
 def _init_db(tokens: Iterable[Currency], hours: int):
     db = init_db()
 
-    if not all(db.query(Quote).filter(Quote.coin==token).count() >= hours for token in tokens):
+    if not all(
+        db.query(Quote).filter(Quote.coin == token).count() >= hours for token in tokens
+    ):
         db.close()
         drop_all()
         db = init_db()
@@ -103,11 +111,7 @@ def _init_db(tokens: Iterable[Currency], hours: int):
 
 def _read_quotes_from_db(db, token: Currency, hours: int) -> List[Quote]:
     return list(
-        db
-        .query(Quote)
-        .filter(Quote.coin==token)
-        .order_by(Quote.timestamp)
-        .all()
+        db.query(Quote).filter(Quote.coin == token).order_by(Quote.timestamp).all()
     )[-hours:]
 
 
@@ -127,11 +131,9 @@ def run_simulation():
     metrics_logger = MetricsLogger(clock)
     price_oracle = PriceOracle(
         clock=clock,
-        quotes={
-            token: _read_quotes_from_db(db, token, hours) for token in tokens
-        },
+        quotes={token: _read_quotes_from_db(db, token, hours) for token in tokens},
     )
-    ithil=Ithil(
+    ithil = Ithil(
         apply_fees=NULL_FEES,
         apply_slippage=GAUSS_RANDOM_SLIPPAGE,
         clock=clock,
@@ -149,7 +151,7 @@ def run_simulation():
         liquidators=[
             Liquidator(
                 ithil=ithil,
-                liquidation_probability=1.00, # We have a sniper liquidator here!
+                liquidation_probability=1.00,  # We have a sniper liquidator here!
             ),
         ],
         traders=[
@@ -159,7 +161,10 @@ def run_simulation():
                 open_position_probability=0.1,
                 close_position_probability=0.2,
                 ithil=ithil,
-                calculate_collateral_usd=lambda token: (abs(gauss(mu=3000, sigma=5000)) + 100.0) / price_oracle.get_price(token),
+                calculate_collateral_usd=lambda token: (
+                    abs(gauss(mu=3000, sigma=5000)) + 100.0
+                )
+                / price_oracle.get_price(token),
                 calculate_leverage=lambda: uniform(1.0, 10.0),
             ),
         ],

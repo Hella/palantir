@@ -89,7 +89,9 @@ class Ithil:
 
     def close_position(self, position_id: PositionId, liquidation_fee=0.0) -> None:
         position = self.active_positions[position_id]
-        amount = self._swap(position.held_token, position.owed_token, position.allowance)
+        amount = self._swap(
+            position.held_token, position.owed_token, position.allowance
+        )
         assert amount > 0.0, "Swap returned negative or null amount"
 
         interest_amount = position.principal * position.interest_rate
@@ -99,12 +101,16 @@ class Ithil:
         # TODO log interest amount
         # TODO log LP profit
 
-        collateral_after_interest_and_fees = self.apply_fees(collateral_after_interest) - liquidation_fee
+        collateral_after_interest_and_fees = (
+            self.apply_fees(collateral_after_interest) - liquidation_fee
+        )
         # TODO direct fees to Ithil liquidation insurance pool
         # TODO direct fees to Ithil governance token holders to account for pl of the protocol
         # TODO log LP profit if any
 
-        total_amont_after_interest_and_fees = amount + collateral_after_interest_and_fees
+        total_amont_after_interest_and_fees = (
+            amount + collateral_after_interest_and_fees
+        )
 
         if total_amont_after_interest_and_fees < position.principal:
             # The swapped amount plus collateral with interest and fees does not fully cover the
@@ -133,7 +139,6 @@ class Ithil:
 
         self.closed_positions[position_id] = self.clock.time
 
-
     @property
     def active_positions(self) -> Dict[PositionId, Position]:
         return {
@@ -156,7 +161,10 @@ class Ithil:
         )
 
         # XXX here we assume a fixed risk factor of 30%
-        return position.principal - current_value_in_owed_tokens > position.collateral - (30 * position.collateral / 100)
+        return (
+            position.principal - current_value_in_owed_tokens
+            > position.collateral - (30 * position.collateral / 100)
+        )
 
     def liquidate_position(self, position_id: PositionId) -> None:
         position = self.active_positions[position_id]
@@ -164,7 +172,9 @@ class Ithil:
         self.close_position(position_id, liquidation_fee)
         logging.info(f"LiquidatePosition\t => {position}")
 
-    def _swap(self, src_token: Currency, dst_token: Currency, src_token_amount: float) -> float:
+    def _swap(
+        self, src_token: Currency, dst_token: Currency, src_token_amount: float
+    ) -> float:
         src_token_price = self.price_oracle.get_price(src_token)
         dst_token_price = self.price_oracle.get_price(dst_token)
 
