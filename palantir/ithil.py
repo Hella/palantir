@@ -87,50 +87,31 @@ class Ithil:
 
         return position_id
 
-    def close_position(self, position_id: PositionId, liquidation_fee=0.0) -> None:
+    def close_position(self, position_id: PositionId, liquidation_fee=0.0) -> float:
         position = self.active_positions[position_id]
         amount = self._swap(
             position.held_token, position.owed_token, position.allowance
         )
         assert amount > 0.0, "Swap returned negative or null amount"
 
-        interest_amount = position.principal * position.interest_rate
-        collateral_after_interest = position.collateral - interest_amount
-        assert collateral_after_interest >= 0, "Collateral insufficient to pay interest"
-        self.vaults[position.owed_token] += interest_amount
-        # TODO log interest amount
-        # TODO log LP profit
-
-        collateral_after_interest_and_fees = (
-            self.apply_fees(collateral_after_interest) - liquidation_fee
-        )
-        # TODO direct fees to Ithil liquidation insurance pool
-        # TODO direct fees to Ithil governance token holders to account for pl of the protocol
-        # TODO log LP profit if any
-
-        total_amont_after_interest_and_fees = (
-            amount + collateral_after_interest_and_fees
-        )
-
-        if total_amont_after_interest_and_fees < position.principal:
+        if amount + position.collateral < position.principal:
             # The swapped amount plus collateral with interest and fees does not fully cover the
             # principal so we keep the full collateral.
             # A liquidator should have closed this position but the trader was faster in this case,
             # the LP had a loss so we repay it with the insurance pool.
             self.metrics_logger.log(Metric.CLOSED_WITH_LP_LOSS)
-            self.vaults[position.owed_token] += total_amont_after_interest_and_fees
-            # TODO extract tokens from Ithil liquidation insurance pool to cover for the position loss
-        elif amount < position.principal:
+            self.vaults[position.owed_token] += position.collateral
+            trader_pl = -position.collateral
+        elif amount < position.principal and amount + position.collateral > position.principal:
             # The swapped amount plus collateral with interest and fees does cover the principal
             # but the trader made a loss, so we return only part of the collateral to the trader.
-            trader_loss = position.principal - amount
+            trader_pl = position.principal - amount
             self.metrics_logger.log(Metric.CLOSED_WITH_TRADER_LOSS)
             self.vaults[position.owed_token] += position.principal
-            # XXX should we log the trader's loss amount ?
         else:
             # The swapped amount is > the original loan principal so the trader made a profit or no loss.
             # We restore the principal in the LP and return the full amount + profits.
-            trader_profit = amount - position.principal
+            trader_pl = amount - position.principal
             self.metrics_logger.log(Metric.CLOSED_WITH_TRADER_PROFIT)
             self.vaults[position.owed_token] += position.principal
 
@@ -138,6 +119,8 @@ class Ithil:
             logging.info(f"ClosePosition\t => {position}")
 
         self.closed_positions[position_id] = self.clock.time
+
+        return trader_pl
 
     @property
     def active_positions(self) -> Dict[PositionId, Position]:
