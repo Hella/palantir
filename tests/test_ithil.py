@@ -22,10 +22,7 @@ def make_test_quotes_from_prices(prices: List[Price]) -> List[Quote]:
         for price in prices
     ]
 
-def test_example():
-    assert True
-
-def test_open_position():
+def test_trade_cycle_no_fees_no_interest_with_profit():
     quotes = {
         Currency('bitcoin'): make_test_quotes_from_prices(
             [45000, 45100, 45200, 45300]
@@ -70,6 +67,8 @@ def test_open_position():
     assert position_id in ithil.positions, metrics_logger.metrics
 
     clock.step()
+
+    assert ithil.can_liquidate_position(position_id) == False
 
     pl = ithil.close_position(position_id)
 
