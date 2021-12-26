@@ -23,6 +23,10 @@ def make_test_quotes_from_prices(prices: List[Price]) -> List[Quote]:
     ]
 
 def test_trade_cycle_no_fees_no_interest_with_profit():
+    DAI_LIQUIDITY = 750000.0
+    WBTC_LIQUIDITY = 7.0
+    WETH_LIQUIDITY = 300.0
+
     quotes = {
         Currency('bitcoin'): make_test_quotes_from_prices(
             [45000, 45100, 45200, 45300]
@@ -47,9 +51,9 @@ def test_trade_cycle_no_fees_no_interest_with_profit():
             quotes=quotes,
         ),
         vaults={
-            Currency('bitcoin'): 7.0,
-            Currency('dai'): 750000.0,
-            Currency('ethereum'): 300.0,
+            Currency('bitcoin'): WBTC_LIQUIDITY,
+            Currency('dai'): DAI_LIQUIDITY,
+            Currency('ethereum'): WETH_LIQUIDITY,
         },
     )
 
@@ -73,3 +77,5 @@ def test_trade_cycle_no_fees_no_interest_with_profit():
     pl = ithil.close_position(position_id)
 
     assert pl == 100.0
+    assert ithil.vaults[Currency("dai")] == DAI_LIQUIDITY
+    assert ithil.vaults[Currency("ethereum")] == WETH_LIQUIDITY
