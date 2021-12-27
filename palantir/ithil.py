@@ -16,6 +16,7 @@ from palantir.types import (
 
 class Ithil:
     clock: Clock
+    insurance_pool: Dict[Currency, float]
     metrics_logger: MetricsLogger
     positions_id: PositionId
     positions: Dict[PositionId, Position]
@@ -28,17 +29,19 @@ class Ithil:
         apply_fees: Callable[[float], float],
         apply_slippage: Callable[[Price], Price],
         clock: Clock,
+        insurance_pool: Dict[Currency, float],
         metrics_logger: MetricsLogger,
         price_oracle: PriceOracle,
         vaults: Dict[Currency, float],
     ):
-        self.positions_id = PositionId(0)
-        self.positions = {}
-        self.closed_positions = {}
         self.apply_fees = apply_fees
         self.apply_slippage = apply_slippage
+        self.closed_positions = {}
         self.clock = clock
+        self.insurance_pool = insurance_pool
         self.metrics_logger = metrics_logger
+        self.positions = {}
+        self.positions_id = PositionId(0)
         self.price_oracle = price_oracle
         self.vaults = vaults
 
@@ -94,7 +97,8 @@ class Ithil:
             # A liquidator should have closed this position but the trader was faster in this case,
             # the LP had a loss so we repay it with the insurance pool.
             self.metrics_logger.log(Metric.CLOSED_WITH_LP_LOSS)
-            self.vaults[position.owed_token] += position.collateral
+            self.vaults[position.owed_token] += position.principal
+            self.insurance_pool[position.owed_token] -= position.principal - (position.collateral + amount)
             trader_pl = -position.collateral
         elif amount < position.principal and amount + position.collateral > position.principal:
             # The swapped amount plus collateral with interest and fees does cover the principal

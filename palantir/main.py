@@ -137,6 +137,11 @@ def run_simulation():
         apply_fees=NULL_FEES,
         apply_slippage=GAUSS_RANDOM_SLIPPAGE,
         clock=clock,
+        insurance_pool={
+            Currency("bitcoin"): 0.0,
+            Currency("dai"): 0.0,
+            Currency("ethereum"): 0.0,
+        },
         metrics_logger=metrics_logger,
         price_oracle=price_oracle,
         vaults={

@@ -14,6 +14,7 @@ from palantir.types import (
     Currency,
     Price,
 )
+from palantir.util import Percent
 
 
 def make_test_quotes_from_prices(prices: List[Price]) -> List[Quote]:
@@ -30,6 +31,8 @@ def test_trade_zero_fees_zero_interest_with_profit():
     No fees and no interest.
     Position in closed with a profit.
     """
+    COLLATERAL = 100.0
+    PRINCIPAL = 1000.0
     DAI_LIQUIDITY = 750000.0
     WETH_LIQUIDITY = 300.0
 
@@ -38,7 +41,7 @@ def test_trade_zero_fees_zero_interest_with_profit():
             [1.0, 1.0]
         ),
         Currency('ethereum'): make_test_quotes_from_prices(
-            [4000, 4400]
+            [4000, 4000 + Percent(10).of(4000)]
         ),
     }
     periods = len(list(quotes.values())[0])
@@ -48,6 +51,10 @@ def test_trade_zero_fees_zero_interest_with_profit():
         apply_fees=NULL_FEES,
         apply_slippage=lambda price: price,  # Assume no slippage
         clock=clock,
+        insurance_pool={
+            Currency("dai"): 0.0,
+            Currency("ethereum"): 0.0,
+        },
         metrics_logger=metrics_logger,
         price_oracle=PriceOracle(
             clock=clock,
@@ -64,8 +71,8 @@ def test_trade_zero_fees_zero_interest_with_profit():
         src_token=Currency("dai"),
         dst_token=Currency("ethereum"),
         collateral_token=Currency("dai"),
-        collateral=100.0,
-        principal=1000.0,
+        collateral=COLLATERAL,
+        principal=PRINCIPAL,
         max_slippage_percent=10,
     )
 
@@ -78,7 +85,7 @@ def test_trade_zero_fees_zero_interest_with_profit():
 
     pl = ithil.close_position(position_id)
 
-    assert pl == 100.0
+    assert pl == Percent(10).of(PRINCIPAL)
     assert ithil.vaults[Currency("dai")] == DAI_LIQUIDITY
     assert ithil.vaults[Currency("ethereum")] == WETH_LIQUIDITY
 
@@ -90,12 +97,14 @@ def test_trade_zero_fees_zero_interest_with_partial_loss():
     No fees and no interest.
     Position in closed with a loss fully covered by the collateral.
     """
+    COLLATERAL = 100.0
+    PRINCIPAL = 1000.0
     DAI_LIQUIDITY = 750000.0
     WETH_LIQUIDITY = 300.0
 
     quotes = {
         Currency("ethereum"): make_test_quotes_from_prices(
-            [4400, 4180]
+            [4400, 4400 - Percent(5).of(4400)]
         ),
         Currency("dai"): make_test_quotes_from_prices(
             [1.0, 1.0]
@@ -108,6 +117,10 @@ def test_trade_zero_fees_zero_interest_with_partial_loss():
         apply_fees=NULL_FEES,
         apply_slippage=lambda price: price,
         clock=clock,
+        insurance_pool={
+            Currency("dai"): 0.0,
+            Currency("ethereum"): 0.0,
+        },
         metrics_logger=metrics_logger,
         price_oracle=PriceOracle(
             clock=clock,
@@ -124,14 +137,13 @@ def test_trade_zero_fees_zero_interest_with_partial_loss():
         src_token=Currency("dai"),
         dst_token=Currency("ethereum"),
         collateral_token=Currency("dai"),
-        collateral=100.0,
-        principal=1000.0,
+        collateral=COLLATERAL,
+        principal=PRINCIPAL,
         max_slippage_percent=10,
     )
 
     assert position_id is not None
-
-    assert position_id in ithil.active_positions, ithil.closed_positions
+    assert position_id in ithil.active_positions
 
     clock.step()
 
@@ -139,6 +151,72 @@ def test_trade_zero_fees_zero_interest_with_partial_loss():
 
     pl = ithil.close_position(position_id)
 
-    assert pl == -50.0
+    assert pl == -Percent(5).of(PRINCIPAL)
     assert ithil.vaults[Currency("dai")] == DAI_LIQUIDITY
     assert ithil.vaults[Currency("ethereum")] == WETH_LIQUIDITY
+
+
+def test_trade_zero_fees_zero_interest_with_total_loss():
+    """
+    Trader invests in DAI/WETH with a loss of 120% of collateral.
+    Collateral of 100.0, leverage of x10.
+    No fees and no interest.
+    Position in closed with a loss not fully covered by the collateral.
+    LPs are compensated by the insurance pool.
+    """
+    DAI_INSURANCE_LIQUIDITY = 1000.0
+    DAI_LIQUIDITY = 750000.0
+    WETH_LIQUIDITY = 300.0
+    COLLATERAL = 100.0
+    PRINCIPAL = 1000.0
+
+    quotes = {
+        Currency("dai"): make_test_quotes_from_prices([1.0, 1.0]),
+        Currency("ethereum"): make_test_quotes_from_prices([4400, 4400 - Percent(12).of(4400)])
+    }
+    periods = len(list(quotes.values())[0])
+    clock = Clock(periods)
+    metrics_logger = MetricsLogger(clock)
+    ithil = Ithil(
+        apply_fees=NULL_FEES,
+        apply_slippage=lambda price: price,
+        clock=clock,
+        insurance_pool={
+            Currency("dai"): DAI_INSURANCE_LIQUIDITY,
+            Currency("ethereum"): 0.0,
+        },
+        metrics_logger=metrics_logger,
+        price_oracle=PriceOracle(
+            clock=clock,
+            quotes=quotes,
+        ),
+        vaults={
+            Currency("dai"): DAI_LIQUIDITY,
+            Currency("ethereum"): WETH_LIQUIDITY,
+        },
+    )
+
+    position_id = ithil.open_position(
+        trader=Account("0xabcd"),
+        src_token=Currency("dai"),
+        dst_token=Currency("ethereum"),
+        collateral_token=Currency("dai"),
+        collateral=COLLATERAL,
+        principal=PRINCIPAL,
+        max_slippage_percent=10,
+    )
+
+    assert position_id is not None
+    assert position_id in ithil.active_positions
+
+    clock.step()
+
+    assert ithil.can_liquidate_position(position_id) == True
+
+    pl = ithil.close_position(position_id)
+
+    assert pl == -COLLATERAL
+    assert ithil.vaults[Currency("dai")] == DAI_LIQUIDITY
+
+    loss = Percent(12).of(PRINCIPAL)
+    assert ithil.insurance_pool[Currency("dai")] == DAI_INSURANCE_LIQUIDITY - (loss - COLLATERAL)
