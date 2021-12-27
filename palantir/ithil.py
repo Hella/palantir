@@ -17,11 +17,11 @@ from palantir.types import (
 class Ithil:
     clock: Clock
     metrics_logger: MetricsLogger
-    positions_id: PositionId = PositionId(0)
-    positions: Dict[PositionId, Position] = {}
-    closed_positions: Dict[PositionId, float] = {}
+    positions_id: PositionId
+    positions: Dict[PositionId, Position]
+    closed_positions: Dict[PositionId, float]
     price_oracle: PriceOracle
-    vaults: Dict[Currency, float] = defaultdict(float)
+    vaults: Dict[Currency, float]
 
     def __init__(
         self,
@@ -32,6 +32,9 @@ class Ithil:
         price_oracle: PriceOracle,
         vaults: Dict[Currency, float],
     ):
+        self.positions_id = PositionId(0)
+        self.positions = {}
+        self.closed_positions = {}
         self.apply_fees = apply_fees
         self.apply_slippage = apply_slippage
         self.clock = clock
@@ -49,18 +52,9 @@ class Ithil:
         principal: float,
         max_slippage_percent: float,
     ) -> Optional[PositionId]:
-        src_token_price = self.price_oracle.get_price(src_token)
-        dst_token_price = self.price_oracle.get_price(dst_token)
-        base_price = src_token_price / dst_token_price
-
-        price = self.apply_slippage(base_price)
-
-        if price - base_price > max_slippage_percent * base_price / 100:
-            self.metrics_logger.log(Metric.TRADE_FAILED)
-            self.metrics_logger.log(Metric.SLIPPAGE_VIOLATION)
-            return
-
-        allowance = principal * price
+        amount = self._swap(
+            src_token, dst_token, principal
+        )
 
         if self.vaults[src_token] < principal:
             self.metrics_logger.log(Metric.TRADE_FAILED)
@@ -74,7 +68,7 @@ class Ithil:
             collateral_token=collateral_token,
             collateral=collateral,
             principal=principal,
-            allowance=allowance,
+            allowance=amount,
             interest_rate=0.0,
         )
 
@@ -105,7 +99,7 @@ class Ithil:
         elif amount < position.principal and amount + position.collateral > position.principal:
             # The swapped amount plus collateral with interest and fees does cover the principal
             # but the trader made a loss, so we return only part of the collateral to the trader.
-            trader_pl = position.principal - amount
+            trader_pl = amount - position.principal
             self.metrics_logger.log(Metric.CLOSED_WITH_TRADER_LOSS)
             self.vaults[position.owed_token] += position.principal
         else:
