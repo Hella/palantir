@@ -34,7 +34,6 @@ def test_trade_zero_fees_zero_interest_with_profit():
     COLLATERAL = 100.0
     PRINCIPAL = 1000.0
     DAI_LIQUIDITY = 750000.0
-    WETH_LIQUIDITY = 300.0
 
     quotes = {
         Currency('dai'): make_test_quotes_from_prices(
@@ -53,7 +52,6 @@ def test_trade_zero_fees_zero_interest_with_profit():
         clock=clock,
         insurance_pool={
             Currency("dai"): 0.0,
-            Currency("ethereum"): 0.0,
         },
         metrics_logger=metrics_logger,
         price_oracle=PriceOracle(
@@ -62,7 +60,6 @@ def test_trade_zero_fees_zero_interest_with_profit():
         ),
         vaults={
             Currency('dai'): DAI_LIQUIDITY,
-            Currency('ethereum'): WETH_LIQUIDITY,
         },
     )
 
@@ -87,7 +84,7 @@ def test_trade_zero_fees_zero_interest_with_profit():
 
     assert pl == Percent(10).of(PRINCIPAL)
     assert ithil.vaults[Currency("dai")] == DAI_LIQUIDITY
-    assert ithil.vaults[Currency("ethereum")] == WETH_LIQUIDITY
+    assert ithil.insurance_pool[Currency("dai")] == 0.0
 
 
 def test_trade_zero_fees_zero_interest_with_partial_loss():
@@ -100,7 +97,6 @@ def test_trade_zero_fees_zero_interest_with_partial_loss():
     COLLATERAL = 100.0
     PRINCIPAL = 1000.0
     DAI_LIQUIDITY = 750000.0
-    WETH_LIQUIDITY = 300.0
 
     quotes = {
         Currency("ethereum"): make_test_quotes_from_prices(
@@ -119,7 +115,6 @@ def test_trade_zero_fees_zero_interest_with_partial_loss():
         clock=clock,
         insurance_pool={
             Currency("dai"): 0.0,
-            Currency("ethereum"): 0.0,
         },
         metrics_logger=metrics_logger,
         price_oracle=PriceOracle(
@@ -128,7 +123,6 @@ def test_trade_zero_fees_zero_interest_with_partial_loss():
         ),
         vaults={
             Currency("dai"): DAI_LIQUIDITY,
-            Currency("ethereum"): WETH_LIQUIDITY,
         },
     )
 
@@ -153,7 +147,7 @@ def test_trade_zero_fees_zero_interest_with_partial_loss():
 
     assert pl == -Percent(5).of(PRINCIPAL)
     assert ithil.vaults[Currency("dai")] == DAI_LIQUIDITY
-    assert ithil.vaults[Currency("ethereum")] == WETH_LIQUIDITY
+    assert ithil.insurance_pool[Currency("dai")] == 0.0
 
 
 def test_trade_zero_fees_zero_interest_with_total_loss():
@@ -166,7 +160,6 @@ def test_trade_zero_fees_zero_interest_with_total_loss():
     """
     DAI_INSURANCE_LIQUIDITY = 1000.0
     DAI_LIQUIDITY = 750000.0
-    WETH_LIQUIDITY = 300.0
     COLLATERAL = 100.0
     PRINCIPAL = 1000.0
 
@@ -183,7 +176,6 @@ def test_trade_zero_fees_zero_interest_with_total_loss():
         clock=clock,
         insurance_pool={
             Currency("dai"): DAI_INSURANCE_LIQUIDITY,
-            Currency("ethereum"): 0.0,
         },
         metrics_logger=metrics_logger,
         price_oracle=PriceOracle(
@@ -192,7 +184,6 @@ def test_trade_zero_fees_zero_interest_with_total_loss():
         ),
         vaults={
             Currency("dai"): DAI_LIQUIDITY,
-            Currency("ethereum"): WETH_LIQUIDITY,
         },
     )
 
