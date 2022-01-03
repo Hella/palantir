@@ -49,6 +49,7 @@ def test_trade_zero_fees_zero_interest_with_profit():
     ithil = Ithil(
         apply_slippage=lambda price: price,  # Assume no slippage
         calculate_fees=lambda _: 0.0,
+        calculate_interest_rate=lambda _src_token, _dst_token, _collateral, _principal: 0.0,
         calculate_liquidation_fee=lambda _: 0.0,
         clock=clock,
         insurance_pool={
@@ -114,6 +115,7 @@ def test_trade_zero_fees_zero_interest_with_partial_loss():
     ithil = Ithil(
         apply_slippage=lambda price: price,
         calculate_fees=lambda _: 0.0,
+        calculate_interest_rate=lambda _src_token, _dst_token, _collateral, _principal: 0.0,
         calculate_liquidation_fee=lambda _: 0.0,
         clock=clock,
         insurance_pool={
@@ -176,6 +178,7 @@ def test_trade_zero_fees_zero_interest_with_total_loss():
     ithil = Ithil(
         apply_slippage=lambda price: price,
         calculate_fees=lambda _: 0.0,
+        calculate_interest_rate=lambda _src_token, _dst_token, _collateral, _principal: 0.0,
         calculate_liquidation_fee=lambda _: 0.0,
         clock=clock,
         insurance_pool={

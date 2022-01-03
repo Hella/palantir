@@ -135,6 +135,7 @@ def run_simulation():
     ithil = Ithil(
         apply_slippage=GAUSS_RANDOM_SLIPPAGE,
         calculate_fees=lambda _: 0.0,
+        calculate_interest_rate=lambda _src_token, _dst_token, _collateral, _principal: 0.0,
         calculate_liquidation_fee=lambda _: 0.0,
         clock=clock,
         insurance_pool={

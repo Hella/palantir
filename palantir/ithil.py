@@ -27,6 +27,7 @@ class Ithil:
         self,
         apply_slippage: Callable[[Price], Price],
         calculate_fees: Callable[[Position], float],
+        calculate_interest_rate: Callable[[Currency, Currency, float, float], float],
         calculate_liquidation_fee: Callable[[Position], float],
         clock: Clock,
         insurance_pool: Dict[Currency, float],
@@ -36,6 +37,7 @@ class Ithil:
     ):
         self.apply_slippage = apply_slippage
         self.calculate_fees = calculate_fees
+        self.calculate_interest_rate = calculate_interest_rate
         self.calculate_liquidation_fee = calculate_liquidation_fee
         self.closed_positions = {}
         self.clock = clock
@@ -65,6 +67,8 @@ class Ithil:
             self.metrics_logger.log(Metric.INSUFFICIENT_LIQUIDITY)
             return
 
+        interest_rate = self.calculate_interest_rate(src_token, dst_token, collateral, principal)
+
         position = Position(
             owner=trader,
             owed_token=src_token,
@@ -73,7 +77,7 @@ class Ithil:
             collateral=collateral,
             principal=principal,
             allowance=amount,
-            interest_rate=0.0,
+            interest_rate=interest_rate,
         )
 
         position_id = self.positions_id
