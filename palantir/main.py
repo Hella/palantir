@@ -13,7 +13,6 @@ from palantir.crawlers.coingecko import (
 from palantir.clock import Clock
 from palantir.constants import (
     GAUSS_RANDOM_SLIPPAGE,
-    NULL_FEES,
     SECONDS_IN_AN_HOUR,
 )
 from palantir.db import drop_all, init_db, Quote
@@ -134,8 +133,9 @@ def run_simulation():
         quotes={token: _read_quotes_from_db(db, token, hours) for token in tokens},
     )
     ithil = Ithil(
-        apply_fees=NULL_FEES,
         apply_slippage=GAUSS_RANDOM_SLIPPAGE,
+        calculate_fees=lambda _: 0.0,
+        calculate_liquidation_fee=lambda _: 0.0,
         clock=clock,
         insurance_pool={
             Currency("bitcoin"): 0.0,

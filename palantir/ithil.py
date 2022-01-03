@@ -27,6 +27,7 @@ class Ithil:
         self,
         apply_slippage: Callable[[Price], Price],
         calculate_fees: Callable[[Position], float],
+        calculate_liquidation_fee: Callable[[Position], float],
         clock: Clock,
         insurance_pool: Dict[Currency, float],
         metrics_logger: MetricsLogger,
@@ -35,6 +36,7 @@ class Ithil:
     ):
         self.apply_slippage = apply_slippage
         self.calculate_fees = calculate_fees
+        self.calculate_liquidation_fee = calculate_liquidation_fee
         self.closed_positions = {}
         self.clock = clock
         self.insurance_pool = insurance_pool
@@ -153,8 +155,12 @@ class Ithil:
         )
 
     def liquidate_position(self, position_id: PositionId) -> float:
+        """
+        Performs a margin call on an open position, returns the rewarded fees in
+        the same currency as the position's collateral.
+        """
         position = self.active_positions[position_id]
-        liquidation_fee = self._compute_liquidation_fee(position)
+        liquidation_fee = self.calculate_liquidation_fee(position)
         self.close_position(position_id, liquidation_fee)
         logging.info(f"LiquidatePosition\t => {position}")
 
@@ -169,6 +175,3 @@ class Ithil:
         price = src_token_price / dst_token_price
 
         return src_token_amount * self.apply_slippage(price)
-
-    def _compute_liquidation_fee(self, position: Position) -> float:
-        return 0.0
