@@ -60,6 +60,7 @@ def test_trade_zero_fees_zero_interest_with_profit():
             clock=clock,
             quotes=quotes,
         ),
+        split_fees=lambda fees: (0.0, fees),
         vaults={
             Currency('dai'): DAI_LIQUIDITY,
         },
@@ -126,6 +127,7 @@ def test_trade_zero_fees_zero_interest_with_partial_loss():
             clock=clock,
             quotes=quotes,
         ),
+        split_fees=lambda fees: (0.0, fees),
         vaults={
             Currency("dai"): DAI_LIQUIDITY,
         },
@@ -189,6 +191,7 @@ def test_trade_zero_fees_zero_interest_with_total_loss():
             clock=clock,
             quotes=quotes,
         ),
+        split_fees=lambda fees: (0.0, fees),
         vaults={
             Currency("dai"): DAI_LIQUIDITY,
         },
@@ -225,6 +228,7 @@ def test_trade_fees_zero_interest_with_profit():
     Trader invests in DAI/WETH with a profit of 10%.
     Collateral of 100.0, leverage of x10.
     1% fees on collateral and no interest.
+    Fees are split 50/50 between governance and insurance pool.
     Position in closed with a profit.
     """
     DAI_INSURANCE_LIQUIDITY = 1000.0
@@ -257,6 +261,7 @@ def test_trade_fees_zero_interest_with_profit():
             clock=clock,
             quotes=quotes,
         ),
+        split_fees=lambda fees: (fees / 2.0, fees / 2.0),
         vaults={
             Currency('dai'): DAI_LIQUIDITY,
         },
@@ -277,6 +282,7 @@ def test_trade_fees_zero_interest_with_profit():
 
     position = ithil.active_positions[position_id]
     FEES = ithil.calculate_fees(position)
+    GOVERNANCE_FEES, INSURANCE_FEES = ithil.split_fees(FEES)
 
     clock.step()
 
@@ -286,4 +292,5 @@ def test_trade_fees_zero_interest_with_profit():
 
     assert pl == Percent(10).of(PRINCIPAL) - FEES
     assert ithil.vaults[Currency("dai")] == DAI_LIQUIDITY
-    assert ithil.insurance_pool[Currency("dai")] == DAI_INSURANCE_LIQUIDITY
+    assert ithil.insurance_pool[Currency("dai")] == DAI_INSURANCE_LIQUIDITY + INSURANCE_FEES
+    assert ithil.governance_pool[Currency("dai")] == GOVERNANCE_FEES

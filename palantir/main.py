@@ -145,6 +145,7 @@ def run_simulation():
         },
         metrics_logger=metrics_logger,
         price_oracle=price_oracle,
+        split_fees=lambda fees: (0.0, fees),
         vaults={
             Currency("bitcoin"): 7,
             Currency("dai"): 750000.0,

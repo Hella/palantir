@@ -1,5 +1,6 @@
 import logging
-from typing import Callable, Dict, Optional
+from collections import defaultdict
+from typing import Callable, Dict, Optional, Tuple
 
 from palantir.clock import Clock
 from palantir.metrics import Metric, MetricsLogger
@@ -33,6 +34,7 @@ class Ithil:
         insurance_pool: Dict[Currency, float],
         metrics_logger: MetricsLogger,
         price_oracle: PriceOracle,
+        split_fees: Callable[[float], Tuple[float, float]],
         vaults: Dict[Currency, float],
     ):
         """
@@ -43,9 +45,11 @@ class Ithil:
         - calculate_liquidation_fee: returns the fee to be rewarded to the liquidator, to be deducted from
         the position's collateral, and in the same currency as the collateral.
         - clock: the clock that tracks time during the simulation, with time expressed as integers.
-        - insurance_pool: amount of liquidity available per currency in the insurance pool
-        - metrics_logger: used to log interesting events during a simulation
+        - governance_pool: a virtual pool representing the liquidity sent to governance token holders.
+        - insurance_pool: amount of liquidity available per currency in the insurance pool.
+        - metrics_logger: used to log interesting events during a simulation.
         - price_oracle: provides current price information on a currency relative to USD.
+        - split_fees: returns the original fees split into (governance_fees, insurance_fees).
         - valults: amount of liquidity available per currency in the vaults.
         """
         self.apply_slippage = apply_slippage
@@ -54,11 +58,13 @@ class Ithil:
         self.calculate_liquidation_fee = calculate_liquidation_fee
         self.closed_positions = {}
         self.clock = clock
+        self.governance_pool = defaultdict(lambda: 0.0)
         self.insurance_pool = insurance_pool
         self.metrics_logger = metrics_logger
         self.positions = {}
         self.positions_id = PositionId(0)
         self.price_oracle = price_oracle
+        self.split_fees = split_fees
         self.vaults = vaults
 
     def open_position(
@@ -106,6 +112,7 @@ class Ithil:
         position = self.active_positions[position_id]
 
         fees = self.calculate_fees(position)
+        governance_fees, insurance_fees = self.split_fees(fees)
 
         amount = self._swap(
             position.held_token, position.owed_token, position.allowance
@@ -124,15 +131,19 @@ class Ithil:
         elif amount < position.principal and amount + position.collateral - fees >= position.principal:
             # The swapped amount plus collateral with interest and fees does cover the principal
             # but the trader made a loss, so we return only part of the collateral to the trader.
-            trader_pl = amount - position.principal
+            trader_pl = amount - position.principal - fees
             self.metrics_logger.log(Metric.CLOSED_WITH_TRADER_LOSS)
             self.vaults[position.owed_token] += position.principal
+            self.insurance_pool[position.owed_token] += insurance_fees
+            self.governance_pool[position.owed_token] += governance_fees
         else:
             # The swapped amount is > the original loan principal so the trader made a profit or no loss.
             # We restore the principal in the LP and return the full amount + profits.
             trader_pl = amount - position.principal - fees
             self.metrics_logger.log(Metric.CLOSED_WITH_TRADER_PROFIT)
             self.vaults[position.owed_token] += position.principal
+            self.insurance_pool[position.owed_token] += insurance_fees
+            self.governance_pool[position.owed_token] += governance_fees
 
         if liquidation_fee == 0.0:
             logging.info(f"ClosePosition\t => {position}")
