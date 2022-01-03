@@ -3,7 +3,6 @@ from typing import List
 from palantir.clock import Clock
 from palantir.constants import (
     GAUSS_RANDOM_SLIPPAGE,
-    NULL_FEES,
 )
 from palantir.db import Quote
 from palantir.ithil import Ithil
@@ -48,8 +47,8 @@ def test_trade_zero_fees_zero_interest_with_profit():
     clock = Clock(periods)
     metrics_logger = MetricsLogger(clock)
     ithil = Ithil(
-        apply_fees=NULL_FEES,
         apply_slippage=lambda price: price,  # Assume no slippage
+        calculate_fees=lambda _: 0.0,
         clock=clock,
         insurance_pool={
             Currency("dai"): DAI_INSURANCE_LIQUIDITY,
@@ -112,8 +111,8 @@ def test_trade_zero_fees_zero_interest_with_partial_loss():
     clock = Clock(periods)
     metrics_logger = MetricsLogger(clock)
     ithil = Ithil(
-        apply_fees=NULL_FEES,
         apply_slippage=lambda price: price,
+        calculate_fees=lambda _: 0.0,
         clock=clock,
         insurance_pool={
             Currency("dai"): DAI_INSURANCE_LIQUIDITY,
@@ -173,8 +172,8 @@ def test_trade_zero_fees_zero_interest_with_total_loss():
     clock = Clock(periods)
     metrics_logger = MetricsLogger(clock)
     ithil = Ithil(
-        apply_fees=NULL_FEES,
         apply_slippage=lambda price: price,
+        calculate_fees=lambda _: 0.0,
         clock=clock,
         insurance_pool={
             Currency("dai"): DAI_INSURANCE_LIQUIDITY,

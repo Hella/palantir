@@ -25,16 +25,16 @@ class Ithil:
 
     def __init__(
         self,
-        apply_fees: Callable[[float], float],
         apply_slippage: Callable[[Price], Price],
+        calculate_fees: Callable[[Position], float],
         clock: Clock,
         insurance_pool: Dict[Currency, float],
         metrics_logger: MetricsLogger,
         price_oracle: PriceOracle,
         vaults: Dict[Currency, float],
     ):
-        self.apply_fees = apply_fees
         self.apply_slippage = apply_slippage
+        self.calculate_fees = calculate_fees
         self.closed_positions = {}
         self.clock = clock
         self.insurance_pool = insurance_pool
@@ -85,12 +85,15 @@ class Ithil:
 
     def close_position(self, position_id: PositionId, liquidation_fee=0.0) -> float:
         position = self.active_positions[position_id]
+
+        fees = self.calculate_fees(position)
+
         amount = self._swap(
             position.held_token, position.owed_token, position.allowance
         )
         assert amount > 0.0, "Swap returned negative or null amount"
 
-        if amount + position.collateral < position.principal:
+        if amount + position.collateral - fees < position.principal:
             # The swapped amount plus collateral with interest and fees does not fully cover the
             # principal so we keep the full collateral.
             # A liquidator should have closed this position but the trader was faster in this case,
@@ -99,7 +102,7 @@ class Ithil:
             self.vaults[position.owed_token] += position.principal
             self.insurance_pool[position.owed_token] -= position.principal - (position.collateral + amount)
             trader_pl = -position.collateral
-        elif amount < position.principal and amount + position.collateral > position.principal:
+        elif amount < position.principal and amount + position.collateral - fees >= position.principal:
             # The swapped amount plus collateral with interest and fees does cover the principal
             # but the trader made a loss, so we return only part of the collateral to the trader.
             trader_pl = amount - position.principal
@@ -108,7 +111,7 @@ class Ithil:
         else:
             # The swapped amount is > the original loan principal so the trader made a profit or no loss.
             # We restore the principal in the LP and return the full amount + profits.
-            trader_pl = amount - position.principal
+            trader_pl = amount - position.principal - fees
             self.metrics_logger.log(Metric.CLOSED_WITH_TRADER_PROFIT)
             self.vaults[position.owed_token] += position.principal
 
@@ -134,6 +137,9 @@ class Ithil:
             return False
 
         position = active_positions[position_id]
+
+        fees = self.calculate_fees(position)
+
         current_value_in_owed_tokens = self._swap(
             position.held_token,
             position.owed_token,
@@ -143,14 +149,16 @@ class Ithil:
         # XXX here we assume a fixed risk factor of 30%
         return (
             position.principal - current_value_in_owed_tokens
-            > position.collateral - (30 * position.collateral / 100)
+            > position.collateral - (30 * position.collateral / 100) - fees
         )
 
-    def liquidate_position(self, position_id: PositionId) -> None:
+    def liquidate_position(self, position_id: PositionId) -> float:
         position = self.active_positions[position_id]
         liquidation_fee = self._compute_liquidation_fee(position)
         self.close_position(position_id, liquidation_fee)
         logging.info(f"LiquidatePosition\t => {position}")
+
+        return liquidation_fee
 
     def _swap(
         self, src_token: Currency, dst_token: Currency, src_token_amount: float
