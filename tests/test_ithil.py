@@ -31,9 +31,10 @@ def test_trade_zero_fees_zero_interest_with_profit():
     No fees and no interest.
     Position in closed with a profit.
     """
+    DAI_INSURANCE_LIQUIDITY = 1000.0
+    DAI_LIQUIDITY = 750000.0
     COLLATERAL = 100.0
     PRINCIPAL = 1000.0
-    DAI_LIQUIDITY = 750000.0
 
     quotes = {
         Currency('dai'): make_test_quotes_from_prices(
@@ -51,7 +52,7 @@ def test_trade_zero_fees_zero_interest_with_profit():
         apply_slippage=lambda price: price,  # Assume no slippage
         clock=clock,
         insurance_pool={
-            Currency("dai"): 0.0,
+            Currency("dai"): DAI_INSURANCE_LIQUIDITY,
         },
         metrics_logger=metrics_logger,
         price_oracle=PriceOracle(
@@ -84,7 +85,7 @@ def test_trade_zero_fees_zero_interest_with_profit():
 
     assert pl == Percent(10).of(PRINCIPAL)
     assert ithil.vaults[Currency("dai")] == DAI_LIQUIDITY
-    assert ithil.insurance_pool[Currency("dai")] == 0.0
+    assert ithil.insurance_pool[Currency("dai")] == DAI_INSURANCE_LIQUIDITY
 
 
 def test_trade_zero_fees_zero_interest_with_partial_loss():
@@ -96,6 +97,7 @@ def test_trade_zero_fees_zero_interest_with_partial_loss():
     """
     COLLATERAL = 100.0
     PRINCIPAL = 1000.0
+    DAI_INSURANCE_LIQUIDITY = 1000.0
     DAI_LIQUIDITY = 750000.0
 
     quotes = {
@@ -114,7 +116,7 @@ def test_trade_zero_fees_zero_interest_with_partial_loss():
         apply_slippage=lambda price: price,
         clock=clock,
         insurance_pool={
-            Currency("dai"): 0.0,
+            Currency("dai"): DAI_INSURANCE_LIQUIDITY,
         },
         metrics_logger=metrics_logger,
         price_oracle=PriceOracle(
@@ -147,7 +149,7 @@ def test_trade_zero_fees_zero_interest_with_partial_loss():
 
     assert pl == -Percent(5).of(PRINCIPAL)
     assert ithil.vaults[Currency("dai")] == DAI_LIQUIDITY
-    assert ithil.insurance_pool[Currency("dai")] == 0.0
+    assert ithil.insurance_pool[Currency("dai")] == DAI_INSURANCE_LIQUIDITY
 
 
 def test_trade_zero_fees_zero_interest_with_total_loss():
