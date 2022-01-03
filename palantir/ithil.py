@@ -35,6 +35,19 @@ class Ithil:
         price_oracle: PriceOracle,
         vaults: Dict[Currency, float],
     ):
+        """
+        - apply_slippage: returns a new price by applying a slippage to the input price.
+        - calculate_fees: calculate fees from a position, in the same currency as the position's collateral.
+        - calculate_interest_rate: returns the interest rate as a decimal percentage, expressed in the same
+        currency as the position's collateral.
+        - calculate_liquidation_fee: returns the fee to be rewarded to the liquidator, to be deducted from
+        the position's collateral, and in the same currency as the collateral.
+        - clock: the clock that tracks time during the simulation, with time expressed as integers.
+        - insurance_pool: amount of liquidity available per currency in the insurance pool
+        - metrics_logger: used to log interesting events during a simulation
+        - price_oracle: provides current price information on a currency relative to USD.
+        - valults: amount of liquidity available per currency in the vaults.
+        """
         self.apply_slippage = apply_slippage
         self.calculate_fees = calculate_fees
         self.calculate_interest_rate = calculate_interest_rate
