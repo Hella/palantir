@@ -113,20 +113,23 @@ class Ithil:
 
         fees = self.calculate_fees(position)
         governance_fees, insurance_fees = self.split_fees(fees)
+        all_fees = fees + liquidation_fee
 
         amount = self._swap(
             position.held_token, position.owed_token, position.allowance
         )
         assert amount > 0.0, "Swap returned negative or null amount"
 
-        if amount + position.collateral - fees < position.principal:
+        if amount + position.collateral - all_fees < position.principal:
             # The swapped amount plus collateral with interest and fees does not fully cover the
             # principal so we keep the full collateral.
             # A liquidator should have closed this position but the trader was faster in this case,
             # the LP had a loss so we repay it with the insurance pool.
             self.metrics_logger.log(Metric.CLOSED_WITH_LP_LOSS)
-            self.vaults[position.owed_token] += position.principal
-            self.insurance_pool[position.owed_token] -= position.principal - (position.collateral + amount)
+            insurance_amount = position.principal - (position.collateral + amount)
+            available_insurance = min(insurance_amount, self.insurance_pool[position.owed_token])
+            self.vaults[position.owed_token] += amount + position.collateral + available_insurance
+            self.insurance_pool[position.owed_token] -= available_insurance
             trader_pl = -position.collateral
         elif amount < position.principal and amount + position.collateral - fees >= position.principal:
             # The swapped amount plus collateral with interest and fees does cover the principal
@@ -187,6 +190,7 @@ class Ithil:
         Performs a margin call on an open position, returns the rewarded fees in
         the same currency as the position's collateral.
         """
+        assert self.can_liquidate_position(position_id)
         position = self.active_positions[position_id]
         liquidation_fee = self.calculate_liquidation_fee(position)
         self.close_position(position_id, liquidation_fee)
