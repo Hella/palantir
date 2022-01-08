@@ -16,6 +16,12 @@ from palantir.types import (
 from palantir.util import Percent
 
 
+NO_SLIPPAGE = lambda price: price
+
+
+NO_FEES = lambda _: 0.0
+
+
 def make_test_quotes_from_prices(prices: List[Price]) -> List[Quote]:
     return [
         Quote(id=0, coin='', vs_currency='usd', timestamp=0, price=price)
@@ -47,8 +53,8 @@ def test_trade_zero_fees_zero_interest_with_profit():
     clock = Clock(periods)
     metrics_logger = MetricsLogger(clock)
     ithil = Ithil(
-        apply_slippage=lambda price: price,  # Assume no slippage
-        calculate_fees=lambda _: 0.0,
+        apply_slippage=NO_SLIPPAGE,
+        calculate_fees=NO_FEES,
         calculate_interest_rate=lambda _src_token, _dst_token, _collateral, _principal: 0.0,
         calculate_liquidation_fee=lambda _: 0.0,
         clock=clock,
@@ -114,8 +120,8 @@ def test_trade_zero_fees_zero_interest_with_partial_loss():
     clock = Clock(periods)
     metrics_logger = MetricsLogger(clock)
     ithil = Ithil(
-        apply_slippage=lambda price: price,
-        calculate_fees=lambda _: 0.0,
+        apply_slippage=NO_SLIPPAGE,
+        calculate_fees=NO_FEES,
         calculate_interest_rate=lambda _src_token, _dst_token, _collateral, _principal: 0.0,
         calculate_liquidation_fee=lambda _: 0.0,
         clock=clock,
@@ -178,8 +184,8 @@ def test_trade_zero_fees_zero_interest_with_total_loss():
     clock = Clock(periods)
     metrics_logger = MetricsLogger(clock)
     ithil = Ithil(
-        apply_slippage=lambda price: price,
-        calculate_fees=lambda _: 0.0,
+        apply_slippage=NO_SLIPPAGE,
+        calculate_fees=NO_FEES,
         calculate_interest_rate=lambda _src_token, _dst_token, _collateral, _principal: 0.0,
         calculate_liquidation_fee=lambda _: 0.0,
         clock=clock,
@@ -248,7 +254,7 @@ def test_trade_fees_zero_interest_with_profit():
     clock = Clock(periods)
     metrics_logger = MetricsLogger(clock)
     ithil = Ithil(
-        apply_slippage=lambda price: price,  # Assume no slippage
+        apply_slippage=NO_SLIPPAGE,
         calculate_fees=lambda position: position.collateral / 100.0,
         calculate_interest_rate=lambda _src_token, _dst_token, _collateral, _principal: 0.0,
         calculate_liquidation_fee=lambda _: 0.0,
@@ -316,7 +322,7 @@ def test_trade_fees_zero_interest_with_total_loss_with_insurance_liquidity():
     clock = Clock(periods)
     metrics_logger = MetricsLogger(clock)
     ithil = Ithil(
-        apply_slippage=lambda price: price, # Assume no slippage
+        apply_slippage=NO_SLIPPAGE,
         calculate_fees=lambda position: position.collateral / 100.0,
         calculate_interest_rate=lambda _src_token, _dst_token, _collateral, _principal: 0.0,
         calculate_liquidation_fee=lambda _: 0.0,
@@ -358,3 +364,71 @@ def test_trade_fees_zero_interest_with_total_loss_with_insurance_liquidity():
     assert ithil.vaults[Currency("dai")] == DAI_LIQUIDITY
     assert ithil.insurance_pool[Currency("dai")] == DAI_INSURANCE_LIQUIDITY - Percent(20).of(COLLATERAL)
     assert ithil.governance_pool[Currency("dai")] == 0.0 # We can't collect fees in case of total loss
+
+
+def test_trade_zero_fees_interest_rate_with_profit():
+    """
+    Trader invests in DAI/WETH with a profit of 10%.
+    Collateral of 100.0, leverage of x10.
+    No fees and fixed annual interest rate of 3%.
+    Position is closed with a profit.
+    """
+    DAI_INSURANCE_LIQUIDITY = 1000.0
+    DAI_LIQUIDITY = 750000.0
+    COLLATERAL = 100.0
+    PRINCIPAL = 1000.0
+
+    quotes = {
+        Currency("dai"): make_test_quotes_from_prices([1.0, 1.0]),
+        Currency("ethereum"): make_test_quotes_from_prices([4000, 4000 + Percent(10).of(4000)]),
+    }
+    periods = len(list(quotes.values())[0])
+    clock = Clock(periods)
+    metrics_logger = MetricsLogger(clock)
+    ithil = Ithil(
+        apply_slippage=NO_SLIPPAGE,
+        calculate_fees=NO_FEES,
+        calculate_interest_rate=lambda _src_token, _dst_token, _collateral, _principal: 0.03,
+        calculate_liquidation_fee=lambda _: 0.0,
+        clock=clock,
+        insurance_pool={
+            Currency("dai"): DAI_INSURANCE_LIQUIDITY,
+        },
+        metrics_logger=metrics_logger,
+        price_oracle=PriceOracle(
+            clock=clock,
+            quotes=quotes,
+        ),
+        split_fees=lambda fees: (0.0, fees),
+        vaults={
+            Currency("dai"): DAI_LIQUIDITY,
+        }
+    )
+
+    position_id = ithil.open_position(
+        trader=Account("0xabcd"),
+        src_token=Currency("dai"),
+        dst_token=Currency("ethereum"),
+        collateral_token=Currency("dai"),
+        collateral=COLLATERAL,
+        principal=PRINCIPAL,
+        max_slippage_percent=10,
+    )
+
+    assert position_id is not None
+    assert position_id in ithil.positions, metrics_logger.metrics
+
+    position = ithil.active_positions[position_id]
+
+    clock.step()
+
+    INTEREST = ithil.calculate_interest(position)
+
+    assert ithil.can_liquidate_position(position_id) == False
+
+    pl = ithil.close_position(position_id)
+
+    assert pl == Percent(10).of(PRINCIPAL) - INTEREST
+    assert ithil.vaults[Currency("dai")] == DAI_LIQUIDITY + INTEREST
+    assert ithil.insurance_pool[Currency("dai")] == DAI_INSURANCE_LIQUIDITY
+    assert ithil.governance_pool[Currency("dai")] == 0.0 # No fees were distributed
