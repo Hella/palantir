@@ -154,14 +154,12 @@ class Ithil:
         self.insurance_pool[position.owed_token] += insurance_fees_amount  # The insurance fees are added to the IP
         self.governance_pool[position.owed_token] += governance_fees_amount  # The governance fees are sent to the token holders
 
-        trader_pl = pl
-
         if liquidation_fee == 0.0:
             logging.info(f"ClosePosition\t => {position}")
 
         self.closed_positions[position_id] = self.clock.time
 
-        return trader_pl
+        return pl
 
     @property
     def active_positions(self) -> Dict[PositionId, Position]:
