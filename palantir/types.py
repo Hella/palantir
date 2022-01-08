@@ -27,3 +27,4 @@ class Position:
     principal: float
     allowance: float
     interest_rate: float
+    created_at: Timestamp

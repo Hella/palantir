@@ -97,6 +97,7 @@ class Ithil:
             principal=principal,
             allowance=amount,
             interest_rate=interest_rate,
+            created_at=self.clock.time,
         )
 
         position_id = self.positions_id
@@ -115,38 +116,45 @@ class Ithil:
         governance_fees, insurance_fees = self.split_fees(fees)
         all_fees = fees + liquidation_fee
 
+        interest = self.calculate_interest(position)
+
         amount = self._swap(
             position.held_token, position.owed_token, position.allowance
         )
         assert amount > 0.0, "Swap returned negative or null amount"
 
-        if amount + position.collateral - all_fees < position.principal:
-            # The swapped amount plus collateral with interest and fees does not fully cover the
-            # principal so we keep the full collateral.
-            # A liquidator should have closed this position but the trader was faster in this case,
-            # the LP had a loss so we repay it with the insurance pool.
-            self.metrics_logger.log(Metric.CLOSED_WITH_LP_LOSS)
-            insurance_amount = position.principal - (position.collateral + amount)
-            available_insurance = min(insurance_amount, self.insurance_pool[position.owed_token])
-            self.vaults[position.owed_token] += amount + position.collateral + available_insurance
-            self.insurance_pool[position.owed_token] -= available_insurance
-            trader_pl = -position.collateral
-        elif amount < position.principal and amount + position.collateral - fees >= position.principal:
-            # The swapped amount plus collateral with interest and fees does cover the principal
-            # but the trader made a loss, so we return only part of the collateral to the trader.
-            trader_pl = amount - position.principal - fees
-            self.metrics_logger.log(Metric.CLOSED_WITH_TRADER_LOSS)
-            self.vaults[position.owed_token] += position.principal
-            self.insurance_pool[position.owed_token] += insurance_fees
-            self.governance_pool[position.owed_token] += governance_fees
-        else:
-            # The swapped amount is > the original loan principal so the trader made a profit or no loss.
-            # We restore the principal in the LP and return the full amount + profits.
-            trader_pl = amount - position.principal - fees
-            self.metrics_logger.log(Metric.CLOSED_WITH_TRADER_PROFIT)
-            self.vaults[position.owed_token] += position.principal
-            self.insurance_pool[position.owed_token] += insurance_fees
-            self.governance_pool[position.owed_token] += governance_fees
+        total_position_liquidity = amount + position.collateral
+
+        # 0. Return either the original principal to liquidity providers or all remaining amount
+        liquidity_pool_amount = min(position.principal, total_position_liquidity)
+        remaining_position_liquidity = total_position_liquidity - liquidity_pool_amount
+
+        # 1. Pay missing liquidity if any from the insurance pool
+        insurance_amount = min(self.insurance_pool[position.owed_token], position.principal - liquidity_pool_amount)
+
+        # 2. Pay interest rate to liquidity pool
+        interest_amount = min(interest, remaining_position_liquidity)
+        remaining_position_liquidity = remaining_position_liquidity - interest_amount
+
+        # 3. Pay insurance pool fees
+        insurance_fees_amount = min(insurance_fees, remaining_position_liquidity)
+        remaining_position_liquidity = remaining_position_liquidity - insurance_fees_amount
+
+        # 4. Pay governance fees
+        governance_fees_amount = min(governance_fees, remaining_position_liquidity)
+        remaining_position_liquidity = remaining_position_liquidity - governance_fees_amount
+
+        # 5. Calculate trader's P&L based on remaining liquidity
+        pl = remaining_position_liquidity - position.collateral
+
+        self.vaults[position.owed_token] += liquidity_pool_amount  # The liquidity used as principal is returned to the LPs
+        self.vaults[position.owed_token] += insurance_amount  # The amount of insurance used to repay the losses, if any
+        self.vaults[position.owed_token] += interest_amount  # The interest amount is added to the LP
+        self.insurance_pool[position.owed_token] -= insurance_amount  # The insurance amount is deducted from the IP
+        self.insurance_pool[position.owed_token] += insurance_fees_amount  # The insurance fees are added to the IP
+        self.governance_pool[position.owed_token] += governance_fees_amount  # The governance fees are sent to the token holders
+
+        trader_pl = pl
 
         if liquidation_fee == 0.0:
             logging.info(f"ClosePosition\t => {position}")
@@ -184,6 +192,21 @@ class Ithil:
             position.principal - current_value_in_owed_tokens
             > position.collateral - (30 * position.collateral / 100) - fees
         )
+
+    def calculate_interest(self, position: Position) -> float:
+        """
+        Returns interest amount in the same currency as the
+        position's principal.
+        """
+        hours = self.clock.time - position.created_at
+        if hours == 0:
+            return 0.0
+
+        p = position.principal
+        r = position.interest_rate
+        n = hours / (365 * 24)
+
+        return p * r * n
 
     def liquidate_position(self, position_id: PositionId) -> float:
         """
