@@ -19,6 +19,7 @@ from palantir.db import drop_all, init_db, Quote
 from palantir.ithil import Ithil
 from palantir.metrics import MetricsLogger
 from palantir.oracle import PriceOracle
+from palantir.palantir import Palantir
 from palantir.simulation import Simulation
 from palantir.trader import Trader
 from palantir.types import Account, Currency, Timestamp
@@ -125,49 +126,65 @@ def run_simulation():
 
     db = _init_db(tokens, hours)
 
-    clock = Clock(hours)
-    metrics_logger = MetricsLogger(clock)
-    price_oracle = PriceOracle(
-        clock=clock,
-        quotes={token: _read_quotes_from_db(db, token, hours) for token in tokens},
-    )
-    ithil = Ithil(
-        apply_slippage=GAUSS_RANDOM_SLIPPAGE,
-        calculate_fees=lambda _: 0.0,
-        calculate_interest_rate=lambda _src_token, _dst_token, _collateral, _principal: 0.0,
-        calculate_liquidation_fee=lambda _: 0.0,
-        clock=clock,
-        insurance_pool={
-            Currency("bitcoin"): 0.0,
-            Currency("dai"): 0.0,
-            Currency("ethereum"): 0.0,
-        },
-        metrics_logger=metrics_logger,
-        price_oracle=price_oracle,
-        split_fees=lambda fees: (0.0, fees),
-        vaults={
-            Currency("bitcoin"): 7,
-            Currency("dai"): 750000.0,
-            Currency("ethereum"): 300.0,
-        },
-    )
-    simulation = Simulation(
-        clock=clock,
-        ithil=ithil,
-        traders=[
-            # XXX we have a lonely trader here
-            Trader(
-                account=Account("aaaaa"),
-                open_position_probability=0.1,
-                close_position_probability=0.2,
-                ithil=ithil,
-                calculate_collateral_usd=lambda token: (
-                    abs(gauss(mu=3000, sigma=5000)) + 100.0
-                )
-                / price_oracle.get_price(token),
-                calculate_leverage=lambda: uniform(1.0, 10.0),
-            ),
-        ],
+    def build_simulation():
+        clock = Clock(hours)
+
+        # We model slippage as a normally distributed random variable with mean equal to the current price
+        # and variance proportional to a percentage of the price as described by max desired slippage.
+        DESIRED_MAX_SLIPPAGE_PERCENT = 1.0
+        GAUSS_RANDOM_SLIPPAGE = lambda price: gauss(
+            price, price * DESIRED_MAX_SLIPPAGE_PERCENT / 100
+        )
+
+        metrics_logger = MetricsLogger(clock)
+        price_oracle = PriceOracle(
+            clock=clock,
+            quotes={token: _read_quotes_from_db(db, token, hours) for token in tokens},
+        )
+        ithil = Ithil(
+            apply_slippage=GAUSS_RANDOM_SLIPPAGE,
+            calculate_fees=lambda _: 0.0,
+            calculate_interest_rate=lambda _src_token, _dst_token, _collateral, _principal: 0.0,
+            calculate_liquidation_fee=lambda _: 0.0,
+            clock=clock,
+            insurance_pool={
+                Currency("bitcoin"): 0.0,
+                Currency("dai"): 0.0,
+                Currency("ethereum"): 0.0,
+            },
+            metrics_logger=metrics_logger,
+            price_oracle=price_oracle,
+            split_fees=lambda fees: (fees / 2.0, fees / 2.0),
+            vaults={
+                Currency("bitcoin"): 7.0,
+                Currency("dai"): 750000.0,
+                Currency("ethereum"): 300.0,
+            },
+        )
+        simulation = Simulation(
+            clock=clock,
+            ithil=ithil,
+            traders=[
+                Trader(
+                    account=Account("aaaaa"),
+                    open_position_probability=0.1,
+                    close_position_probability=0.2,
+                    ithil=ithil,
+                    calculate_collateral_usd=lambda token: (
+                        abs(gauss(mu=3000, sigma=5000)) + 100.0
+                    )
+                    / price_oracle.get_price(token),
+                    calculate_leverage=lambda: uniform(1.0, 10.0),
+                ),
+            ],
+        )
+
+        return simulation
+
+
+    palantir = Palantir(
+        simulation_factory=build_simulation,
+        simulations_number=1,
     )
 
-    simulation.run()
+    palantir.run()

@@ -88,7 +88,10 @@ class Ithil:
 
         interest_rate = self.calculate_interest_rate(src_token, dst_token, collateral, principal)
 
+        position_id = self.positions_id
+
         position = Position(
+            id=position_id,
             owner=trader,
             owed_token=src_token,
             held_token=dst_token,
@@ -100,7 +103,6 @@ class Ithil:
             created_at=self.clock.time,
         )
 
-        position_id = self.positions_id
         self.positions[position_id] = position
         self.positions_id = PositionId(self.positions_id + 1)
         self.vaults[src_token] -= principal
@@ -114,6 +116,7 @@ class Ithil:
 
         fees = self.calculate_fees(position)
         governance_fees, insurance_fees = self.split_fees(fees)
+        assert governance_fees + insurance_fees == fees
 
         interest = self.calculate_interest(position)
 
@@ -221,13 +224,14 @@ class Ithil:
         Performs a margin call on an open position, returns the rewarded fees in
         the same currency as the position's collateral.
         """
-        assert self.can_liquidate_position(position_id)
-        position = self.active_positions[position_id]
-        liquidation_fee = self.calculate_liquidation_fee(position)
-        _, liquidation_pl = self.close_position(position_id, liquidation_fee)
-        logging.info(f"LiquidatePosition\t => {position}")
-
-        return liquidation_pl
+        if self.can_liquidate_position(position_id):
+            position = self.active_positions[position_id]
+            liquidation_fee = self.calculate_liquidation_fee(position)
+            _, liquidation_pl = self.close_position(position_id, liquidation_fee)
+            logging.info(f"LiquidatePosition\t => {position}")
+            return liquidation_pl
+        else:
+            return 0.0
 
     def _swap(
         self, src_token: Currency, dst_token: Currency, src_token_amount: float

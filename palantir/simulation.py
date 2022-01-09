@@ -26,6 +26,7 @@ class Simulation:
     def run(self) -> None:
         while self.clock.step():
             logging.info(f"TIME: {self.clock._time}")
+            logging.info(f"POSITIONS: {self.ithil.active_positions}")
             for trader in self.traders:
                 trader.trade()
             for position_id in self.ithil.active_positions.keys():

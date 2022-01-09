@@ -1,6 +1,6 @@
 from collections import defaultdict
 from enum import Enum
-from typing import Dict, Tuple
+from typing import Dict, List, Tuple
 
 from palantir.clock import Clock
 from palantir.types import Timestamp
@@ -17,13 +17,29 @@ class Metric(Enum):
 
 class MetricsLogger:
     clock: Clock
-    metrics: Dict[Tuple[int, Metric], float] = defaultdict(float)
+    metrics: Dict[Tuple[Timestamp, Metric], List[float]] = defaultdict(lambda: [])
 
     def __init__(self, clock: Clock):
         self.clock = clock
 
-    def log(self, metric: Metric) -> None:
-        self.metrics[self.clock.time, metric] += 1.0
+    def log(self, metric: Metric, sample: float=1.0) -> None:
+        self.metrics[self.clock.time, metric].append(sample)
 
-    def log_sum(self, metric: Metric, value: float) -> None:
-        self.metrics[self.clock.time, metric] += value
+
+class MetricsAggregator:
+
+    @staticmethod
+    def sum(samples: List[float]) -> float:
+        return sum(samples)
+
+    @staticmethod
+    def avg(samples: List[float]) -> float:
+        return sum(samples) / len(samples)
+
+    @staticmethod
+    def max(samples: List[float]) -> float:
+        return max(samples)
+
+    @staticmethod
+    def min(samples: List[float]) -> float:
+        return min(samples)

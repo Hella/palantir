@@ -19,6 +19,7 @@ Timestamp = int
 
 @dataclass
 class Position:
+    id: int
     owner: Account
     owed_token: Currency
     held_token: Currency
