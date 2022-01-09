@@ -1,8 +1,9 @@
 import logging
+import random
 import sys
 import time
 from random import gauss, uniform
-from typing import Iterable, List
+from typing import Iterable, List, Set
 
 from argparse import ArgumentParser
 
@@ -114,6 +115,23 @@ def _read_quotes_from_db(db, token: Currency, hours: int) -> List[Quote]:
     )[-hours:]
 
 
+def make_trader_names(n: int) -> Set[str]:
+    names = set()
+    with open("data/first-names.txt", "r") as first_names_f:
+        first_names = first_names_f.readlines()
+    with open("data/middle-names.txt", "r") as middle_names_f:
+        middle_names = middle_names_f.readlines()
+    while len(names) < n:
+        name = (
+            random.choice(first_names).rstrip("\n")
+            + " "
+            + random.choice(middle_names).rstrip("\n")
+        )
+        names.add(name)
+
+    return names
+
+
 def run_simulation():
     hours = 2000
     tokens = (
@@ -127,6 +145,9 @@ def run_simulation():
     db = _init_db(tokens, hours)
 
     def build_simulation():
+        TRADERS_NUMBER = 10
+        TRADER_NAMES = make_trader_names(TRADERS_NUMBER)
+
         clock = Clock(hours)
 
         # We model slippage as a normally distributed random variable with mean equal to the current price
@@ -166,7 +187,7 @@ def run_simulation():
             ithil=ithil,
             traders=[
                 Trader(
-                    account=Account("aaaaa"),
+                    account=Account(trader_name),
                     open_position_probability=0.1,
                     close_position_probability=0.1,
                     ithil=ithil,
@@ -179,13 +200,13 @@ def run_simulation():
                         Currency("bitcoin"): 0.0,
                         Currency("dai"): 1000.0,
                         Currency("ethereum"): 1.0,
-                    }
-                ),
+                    },
+                )
+                for trader_name in TRADER_NAMES
             ],
         )
 
         return simulation
-
 
     palantir = Palantir(
         simulation_factory=build_simulation,
