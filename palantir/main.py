@@ -5,6 +5,7 @@ import time
 from random import gauss, uniform
 from typing import Iterable, List, Set
 
+import names
 from argparse import ArgumentParser
 
 from palantir.crawlers.coingecko import (
@@ -116,20 +117,12 @@ def _read_quotes_from_db(db, token: Currency, hours: int) -> List[Quote]:
 
 
 def make_trader_names(n: int) -> Set[str]:
-    names = set()
-    with open("data/first-names.txt", "r") as first_names_f:
-        first_names = first_names_f.readlines()
-    with open("data/middle-names.txt", "r") as middle_names_f:
-        middle_names = middle_names_f.readlines()
-    while len(names) < n:
-        name = (
-            random.choice(first_names).rstrip("\n")
-            + " "
-            + random.choice(middle_names).rstrip("\n")
-        )
-        names.add(name)
+    trader_names = set()
+    while len(trader_names) < n:
+        name = names.get_full_name()
+        trader_names.add(name)
 
-    return names
+    return trader_names
 
 
 def run_simulation():
