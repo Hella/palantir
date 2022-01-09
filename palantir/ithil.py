@@ -114,7 +114,6 @@ class Ithil:
 
         fees = self.calculate_fees(position)
         governance_fees, insurance_fees = self.split_fees(fees)
-        all_fees = fees + liquidation_fee
 
         interest = self.calculate_interest(position)
 
