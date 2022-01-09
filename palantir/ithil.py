@@ -109,7 +109,7 @@ class Ithil:
 
         return position_id
 
-    def close_position(self, position_id: PositionId, liquidation_fee=0.0) -> float:
+    def close_position(self, position_id: PositionId, liquidation_fee=0.0) -> Tuple[float, float]:
         position = self.active_positions[position_id]
 
         fees = self.calculate_fees(position)
@@ -131,6 +131,7 @@ class Ithil:
 
         # 1. Pay missing liquidity if any from the insurance pool
         insurance_amount = min(self.insurance_pool[position.owed_token], position.principal - liquidity_pool_amount)
+        self.insurance_pool[position.owed_token] -= insurance_amount # The insurance amount is deducted from the IP
 
         # 2. Pay interest rate to liquidity pool
         interest_amount = min(interest, remaining_position_liquidity)
@@ -144,13 +145,23 @@ class Ithil:
         governance_fees_amount = min(governance_fees, remaining_position_liquidity)
         remaining_position_liquidity = remaining_position_liquidity - governance_fees_amount
 
-        # 5. Calculate trader's P&L based on remaining liquidity
-        pl = remaining_position_liquidity - position.collateral
+        # 5. Pay liquidation fees from collateral if any
+        liquidation_fee_from_collateral = min(remaining_position_liquidity, liquidation_fee)
+        remaining_position_liquidity = remaining_position_liquidity - liquidation_fee_from_collateral
+
+        # 6. Pay liquidation fees from insurance pool if any
+        liquidation_fee_from_insurance = min(self.insurance_pool[position.owed_token], liquidation_fee - liquidation_fee_from_collateral)
+        self.insurance_pool[position.owed_token] -= liquidation_fee_from_insurance
+
+        # 7. Calculate liquidation P&L
+        liquidation_pl = liquidation_fee_from_collateral + liquidation_fee_from_insurance
+
+        # 8. Calculate trader's P&L based on remaining liquidity
+        trader_pl = remaining_position_liquidity - position.collateral
 
         self.vaults[position.owed_token] += liquidity_pool_amount  # The liquidity used as principal is returned to the LPs
         self.vaults[position.owed_token] += insurance_amount  # The amount of insurance used to repay the losses, if any
         self.vaults[position.owed_token] += interest_amount  # The interest amount is added to the LP
-        self.insurance_pool[position.owed_token] -= insurance_amount  # The insurance amount is deducted from the IP
         self.insurance_pool[position.owed_token] += insurance_fees_amount  # The insurance fees are added to the IP
         self.governance_pool[position.owed_token] += governance_fees_amount  # The governance fees are sent to the token holders
 
@@ -159,7 +170,7 @@ class Ithil:
 
         self.closed_positions[position_id] = self.clock.time
 
-        return pl
+        return trader_pl, liquidation_pl
 
     @property
     def active_positions(self) -> Dict[PositionId, Position]:
@@ -214,10 +225,10 @@ class Ithil:
         assert self.can_liquidate_position(position_id)
         position = self.active_positions[position_id]
         liquidation_fee = self.calculate_liquidation_fee(position)
-        self.close_position(position_id, liquidation_fee)
+        _, liquidation_pl = self.close_position(position_id, liquidation_fee)
         logging.info(f"LiquidatePosition\t => {position}")
 
-        return liquidation_fee
+        return liquidation_pl
 
     def _swap(
         self, src_token: Currency, dst_token: Currency, src_token_amount: float
