@@ -17,7 +17,6 @@ from palantir.constants import (
 )
 from palantir.db import drop_all, init_db, Quote
 from palantir.ithil import Ithil
-from palantir.liquidator import Liquidator
 from palantir.metrics import MetricsLogger
 from palantir.oracle import PriceOracle
 from palantir.simulation import Simulation
@@ -155,12 +154,6 @@ def run_simulation():
     simulation = Simulation(
         clock=clock,
         ithil=ithil,
-        liquidators=[
-            Liquidator(
-                ithil=ithil,
-                liquidation_probability=1.00,  # We have a sniper liquidator here!
-            ),
-        ],
         traders=[
             # XXX we have a lonely trader here
             Trader(
