@@ -1,29 +1,20 @@
 import logging
-import random
 import sys
-import time
 from random import gauss, uniform
-from typing import Iterable, List, Set
 
 from argparse import ArgumentParser
 
 from palantir.crawlers.coingecko import (
     coin_ids,
-    market_chart_range,
 )
 from palantir.clock import Clock
-from palantir.constants import (
-    GAUSS_RANDOM_SLIPPAGE,
-    SECONDS_IN_AN_HOUR,
-)
-from palantir.db import drop_all, init_db, Quote
 from palantir.ithil import Ithil
 from palantir.metrics import MetricsLogger
 from palantir.oracle import PriceOracle
 from palantir.palantir import Palantir
 from palantir.simulation import Simulation
 from palantir.trader import Trader
-from palantir.types import Account, Currency, Timestamp
+from palantir.types import Account, Currency
 from palantir.util import (
     download_price_data,
     init_price_db,
