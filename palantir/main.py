@@ -168,7 +168,7 @@ def run_simulation():
                 Trader(
                     account=Account("aaaaa"),
                     open_position_probability=0.1,
-                    close_position_probability=0.2,
+                    close_position_probability=0.1,
                     ithil=ithil,
                     calculate_collateral_usd=lambda token: (
                         abs(gauss(mu=3000, sigma=5000)) + 100.0
@@ -176,6 +176,7 @@ def run_simulation():
                     / price_oracle.get_price(token),
                     calculate_leverage=lambda: uniform(1.0, 10.0),
                     liquidity={
+                        Currency("bitcoin"): 0.0,
                         Currency("dai"): 1000.0,
                         Currency("ethereum"): 1.0,
                     }

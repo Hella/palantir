@@ -74,7 +74,9 @@ class Trader:
         return self.liquidity[currency] >= amount
 
     def _want_open_position(self) -> bool:
-        return self.open_position_probability * 100 < random.randint(0, 100)
+        r = random.random()
+        return r < self.open_position_probability
 
     def _want_close_position(self) -> bool:
-        return self.close_position_probability * 100 < random.randint(0, 100)
+        r = random.random()
+        return r < self.close_position_probability
