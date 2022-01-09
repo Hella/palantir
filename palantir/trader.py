@@ -1,5 +1,5 @@
 import random
-from typing import Callable, Set
+from typing import Callable, Dict, Set
 
 from palantir.ithil import Ithil
 from palantir.types import (
@@ -16,9 +16,10 @@ class Trader:
     Some traders will open/close positions very frequently, others will be more conservative.
     """
     account: Account
-    open_position_probability: float
     close_position_probability: float
     ithil: Ithil
+    liquidity: Dict[Currency, float]
+    open_position_probability: float
 
     def __init__(
         self,
@@ -28,6 +29,7 @@ class Trader:
         ithil: Ithil,
         calculate_collateral_usd: Callable[[Currency], float],
         calculate_leverage: Callable[[], float],
+        liquidity: Dict[Currency, float],
     ):
         self.account = account
         self.calculate_collateral_usd = calculate_collateral_usd
@@ -35,27 +37,30 @@ class Trader:
         self.open_position_probability = open_position_probability
         self.close_position_probability = close_position_probability
         self.ithil = ithil
+        self.liquidity = liquidity
 
     def trade(self) -> None:
-        if self._will_open_position():
+        if self._want_open_position():
             tokens = set(self.ithil.vaults.keys())
             src_token = random.choice(tuple(tokens))
             dst_token = random.choice(tuple(tokens - {src_token}))
             collateral = self.calculate_collateral_usd(src_token)
             principal = self.calculate_leverage() * collateral
-            position_id = self.ithil.open_position(
-                trader=self.account,
-                src_token=src_token,
-                dst_token=dst_token,
-                collateral_token=src_token,  # XXX for now always use src_token as collateral
-                collateral=collateral,
-                principal=principal,
-                max_slippage_percent=10,  # XXX use a fixed 10% slippage limit
-            )
-        active_positions = self.active_positions
-        if self._will_close_position() and active_positions:
-            position_id = random.choice(tuple(active_positions))
-            self.ithil.close_position(position_id)
+            if self._can_open_position(src_token, collateral):
+                position_id = self.ithil.open_position(
+                    trader=self.account,
+                    src_token=src_token,
+                    dst_token=dst_token,
+                    collateral_token=src_token,  # XXX for now always use src_token as collateral
+                    collateral=collateral,
+                    principal=principal,
+                    max_slippage_percent=10,  # XXX use a fixed 10% slippage limit
+                )
+        for position_id in self.active_positions:
+            if self._want_close_position():
+                position = self.ithil.positions[position_id]
+                trader_pl, _ = self.ithil.close_position(position_id)
+                self.liquidity[position.owed_token] += trader_pl
 
     @property
     def active_positions(self) -> Set[PositionId]:
@@ -65,8 +70,11 @@ class Trader:
             if self.ithil.positions[position_id].owner == self.account
         }
 
-    def _will_open_position(self) -> bool:
+    def _can_open_position(self, currency: Currency, amount: float) -> bool:
+        return self.liquidity[currency] >= amount
+
+    def _want_open_position(self) -> bool:
         return self.open_position_probability * 100 < random.randint(0, 100)
 
-    def _will_close_position(self) -> bool:
+    def _want_close_position(self) -> bool:
         return self.close_position_probability * 100 < random.randint(0, 100)

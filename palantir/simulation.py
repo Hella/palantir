@@ -5,7 +5,7 @@ from palantir.clock import Clock
 from palantir.ithil import Ithil
 from palantir.oracle import PriceOracle
 from palantir.trader import Trader
-from palantir.types import Currency
+from palantir.types import Account, Currency
 
 
 class Simulation:
@@ -29,6 +29,9 @@ class Simulation:
             logging.info(f"POSITIONS: {self.ithil.active_positions}")
             for trader in self.traders:
                 trader.trade()
-            for position_id in self.ithil.active_positions.keys():
-                if self.ithil.can_liquidate_position(position_id):
-                    self.ithil.liquidate_position(position_id)
+                for position_id in trader.active_positions:
+                    if self.ithil.can_liquidate_position(position_id):
+                        position = self.ithil.positions[position_id]
+                        trader_pl, liquidator_pl = self.ithil.liquidate_position(position_id)
+                        trader.liquidity[position.owed_token] += trader_pl
+                        # TODO log liquidator pl

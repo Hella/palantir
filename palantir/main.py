@@ -175,6 +175,10 @@ def run_simulation():
                     )
                     / price_oracle.get_price(token),
                     calculate_leverage=lambda: uniform(1.0, 10.0),
+                    liquidity={
+                        Currency("dai"): 1000.0,
+                        Currency("ethereum"): 1.0,
+                    }
                 ),
             ],
         )

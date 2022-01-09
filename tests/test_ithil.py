@@ -458,7 +458,7 @@ def test_trade_zero_fees_zero_interest_with_loss_and_liquidation():
 
     quotes = {
         Currency("dai"): make_test_quotes_from_prices([1.0, 1.0]),
-        Currency("ethereum"): make_test_quotes_from_prices([4400, 4400 - Percent(80).of(4400)]),
+        Currency("ethereum"): make_test_quotes_from_prices([4400, 4400 - Percent(8).of(4400)]),
     }
     periods = len(list(quotes.values())[0])
     clock = Clock(periods)
@@ -503,6 +503,7 @@ def test_trade_zero_fees_zero_interest_with_loss_and_liquidation():
 
     assert ithil.can_liquidate_position(position_id) == True
 
-    liquidation_pl = ithil.liquidate_position(position_id)
+    trader_pl, liquidation_pl = ithil.liquidate_position(position_id)
 
+    assert trader_pl == -(Percent(80).of(COLLATERAL) + LIQUIDATION_FEE)
     assert liquidation_pl == LIQUIDATION_FEE == 1.0

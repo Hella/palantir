@@ -219,7 +219,7 @@ class Ithil:
 
         return p * r * n
 
-    def liquidate_position(self, position_id: PositionId) -> float:
+    def liquidate_position(self, position_id: PositionId) -> Tuple[float, float]:
         """
         Performs a margin call on an open position, returns the rewarded fees in
         the same currency as the position's collateral.
@@ -227,11 +227,11 @@ class Ithil:
         if self.can_liquidate_position(position_id):
             position = self.active_positions[position_id]
             liquidation_fee = self.calculate_liquidation_fee(position)
-            _, liquidation_pl = self.close_position(position_id, liquidation_fee)
+            trader_pl, liquidation_pl = self.close_position(position_id, liquidation_fee)
             logging.info(f"LiquidatePosition\t => {position}")
-            return liquidation_pl
+            return trader_pl, liquidation_pl
         else:
-            return 0.0
+            return 0.0, 0.0
 
     def _swap(
         self, src_token: Currency, dst_token: Currency, src_token_amount: float
