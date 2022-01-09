@@ -15,10 +15,7 @@ class Trader:
     according to a fixed probability.
     Some traders will open/close positions very frequently, others will be more conservative.
     """
-
     account: Account
-    opened_positions: Set[PositionId] = set()
-    closed_positions: Set[PositionId] = set()
     open_position_probability: float
     close_position_probability: float
     ithil: Ithil
@@ -55,18 +52,18 @@ class Trader:
                 principal=principal,
                 max_slippage_percent=10,  # XXX use a fixed 10% slippage limit
             )
-            if position_id is not None:
-                # TODO log open position error
-                self.opened_positions.add(position_id)
         active_positions = self.active_positions
         if self._will_close_position() and active_positions:
             position_id = random.choice(tuple(active_positions))
             self.ithil.close_position(position_id)
-            self.closed_positions.add(position_id)
 
     @property
     def active_positions(self) -> Set[PositionId]:
-        return self.opened_positions - self.closed_positions
+        return {
+            position_id
+            for position_id in self.ithil.active_positions
+            if self.ithil.positions[position_id].owner == self.account
+        }
 
     def _will_open_position(self) -> bool:
         return self.open_position_probability * 100 < random.randint(0, 100)
