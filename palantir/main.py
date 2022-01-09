@@ -5,7 +5,6 @@ import time
 from random import gauss, uniform
 from typing import Iterable, List, Set
 
-import names
 from argparse import ArgumentParser
 
 from palantir.crawlers.coingecko import (
@@ -25,9 +24,12 @@ from palantir.palantir import Palantir
 from palantir.simulation import Simulation
 from palantir.trader import Trader
 from palantir.types import Account, Currency, Timestamp
-
-
-VS_CURRENCY = Currency("usd")
+from palantir.util import (
+    download_price_data,
+    init_price_db,
+    make_trader_names,
+    read_quotes_from_db,
+)
 
 
 def setup_logger() -> None:
@@ -41,34 +43,6 @@ def setup_logger() -> None:
     )
     handler.setFormatter(formatter)
     root.addHandler(handler)
-
-
-def download_price_data(token: Currency, hours: int) -> None:
-    logging.info(f"Download {hours} price points for {token}")
-    valid_coin_ids = list(coin_ids())
-    valid_coin_ids_msg = f"Coin should be one of {valid_coin_ids}"
-
-    assert token in valid_coin_ids, valid_coin_ids_msg
-
-    now = Timestamp(time.time())
-    prices = market_chart_range(
-        coin_id=token,
-        vs_currency=VS_CURRENCY,
-        from_timestamp=now - hours * SECONDS_IN_AN_HOUR,
-        to_timestamp=now,
-    )
-
-    quotes = [
-        Quote(coin=token, vs_currency=VS_CURRENCY, timestamp=timestamp, price=price)
-        for timestamp, price in prices
-    ]
-
-    db = init_db()
-
-    for quote in quotes:
-        db.add(quote)
-
-    db.commit()
 
 
 def run_crawler():
@@ -95,36 +69,6 @@ def run_crawler():
     download_price_data(token=token, hours=days * 24)
 
 
-def _init_db(tokens: Iterable[Currency], hours: int):
-    db = init_db()
-
-    if not all(
-        db.query(Quote).filter(Quote.coin == token).count() >= hours for token in tokens
-    ):
-        db.close()
-        drop_all()
-        db = init_db()
-        for token in tokens:
-            download_price_data(token, hours)
-
-    return db
-
-
-def _read_quotes_from_db(db, token: Currency, hours: int) -> List[Quote]:
-    return list(
-        db.query(Quote).filter(Quote.coin == token).order_by(Quote.timestamp).all()
-    )[-hours:]
-
-
-def make_trader_names(n: int) -> Set[str]:
-    trader_names = set()
-    while len(trader_names) < n:
-        name = names.get_full_name()
-        trader_names.add(name)
-
-    return trader_names
-
-
 def run_simulation():
     hours = 2000
     tokens = (
@@ -135,7 +79,7 @@ def run_simulation():
 
     setup_logger()
 
-    db = _init_db(tokens, hours)
+    db = init_price_db(tokens, hours)
 
     def build_simulation():
         TRADERS_NUMBER = 10
@@ -153,7 +97,7 @@ def run_simulation():
         metrics_logger = MetricsLogger(clock)
         price_oracle = PriceOracle(
             clock=clock,
-            quotes={token: _read_quotes_from_db(db, token, hours) for token in tokens},
+            quotes={token: read_quotes_from_db(db, token, hours) for token in tokens},
         )
         ithil = Ithil(
             apply_slippage=GAUSS_RANDOM_SLIPPAGE,

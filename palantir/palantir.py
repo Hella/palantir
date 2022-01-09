@@ -16,5 +16,3 @@ class Palantir:
         simulations = [self.simulation_factory() for _ in range(self.simulations_number)]
         for simulation in simulations:
             simulation.run()
-
-
