@@ -21,5 +21,5 @@ class Palantir:
 
     def run(self) -> List[Metrics]:
         simulations = [self.simulation_factory() for _ in range(self.simulations_number)]
-        with Pool(5) as pool:
+        with Pool(8) as pool:
             return pool.map(run_simulation, simulations)
