@@ -2,6 +2,7 @@ import random
 from typing import Callable, Dict, Set
 
 from palantir.ithil import Ithil
+from palantir.oracle import PriceOracle
 from palantir.types import (
     Account,
     Currency,
@@ -27,7 +28,7 @@ class Trader:
         open_position_probability: float,
         close_position_probability: float,
         ithil: Ithil,
-        calculate_collateral_usd: Callable[[Currency], float],
+        calculate_collateral_usd: Callable[[PriceOracle, Currency], float],
         calculate_leverage: Callable[[], float],
         liquidity: Dict[Currency, float],
     ):
@@ -44,7 +45,7 @@ class Trader:
             tokens = set(self.ithil.vaults.keys())
             src_token = random.choice(tuple(tokens))
             dst_token = random.choice(tuple(tokens - {src_token}))
-            collateral = self.calculate_collateral_usd(src_token)
+            collateral = self.calculate_collateral_usd(self.ithil.price_oracle, src_token)
             principal = self.calculate_leverage() * collateral
             if self._can_open_position(src_token, collateral):
                 position_id = self.ithil.open_position(

@@ -14,6 +14,10 @@ from palantir.types import (
 )
 
 
+def default_governance_liquidity():
+    return 0.0
+
+
 class Ithil:
     clock: Clock
     insurance_pool: Dict[Currency, float]
@@ -58,7 +62,7 @@ class Ithil:
         self.calculate_liquidation_fee = calculate_liquidation_fee
         self.closed_positions = {}
         self.clock = clock
-        self.governance_pool = defaultdict(lambda: 0.0)
+        self.governance_pool = defaultdict(default_governance_liquidity)
         self.insurance_pool = insurance_pool
         self.metrics_logger = metrics_logger
         self.positions = {}

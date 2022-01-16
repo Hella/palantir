@@ -1,7 +1,12 @@
+from multiprocessing import Pool
 from typing import Callable, List
 
 from palantir.metrics import Metrics
 from palantir.simulation import Simulation
+
+
+def run_simulation(simulation: Simulation) -> Metrics:
+    return simulation.run()
 
 
 class Palantir:
@@ -16,4 +21,5 @@ class Palantir:
 
     def run(self) -> List[Metrics]:
         simulations = [self.simulation_factory() for _ in range(self.simulations_number)]
-        return [simulation.run() for simulation in simulations]
+        with Pool(5) as pool:
+            return pool.map(run_simulation, simulations)
