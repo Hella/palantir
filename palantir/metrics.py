@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Dict, List, NewType, Tuple
+from typing import Dict, List, NewType
 
 from palantir.clock import Clock
 from palantir.types import Timestamp
