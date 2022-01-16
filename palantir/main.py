@@ -9,7 +9,13 @@ from palantir.crawlers.coingecko import (
 )
 from palantir.clock import Clock
 from palantir.ithil import Ithil
-from palantir.metrics import MetricsLogger
+from palantir.metrics import (
+    Metric,
+    MetricsAggregator,
+    MetricsAggregatorSum,
+    MetricsLogger,
+    make_timeseries,
+)
 from palantir.oracle import PriceOracle
 from palantir.palantir import Palantir
 from palantir.simulation import Simulation
@@ -141,4 +147,9 @@ def run_simulation():
         simulations_number=1,
     )
 
-    palantir.run()
+    simulations_metrics = palantir.run()
+    metrics = simulations_metrics[0]
+
+    opened_positions = make_timeseries(metrics, Metric.POSITION_OPENED, MetricsAggregatorSum(), hours)
+
+    print(f"OPENED_POSITIONS => {opened_positions}")

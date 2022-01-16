@@ -108,6 +108,7 @@ class Ithil:
         self.vaults[src_token] -= principal
 
         logging.info(f"OpenPosition\t => {position}")
+        self.metrics_logger.log(Metric.POSITION_OPENED, 1.0)
 
         return position_id
 
@@ -171,6 +172,8 @@ class Ithil:
             logging.info(f"ClosePosition\t => {position}")
 
         self.closed_positions[position_id] = self.clock.time
+
+        self.metrics_logger.log(Metric.POSITION_CLOSED, 1.0)
 
         return trader_pl, liquidation_pl
 

@@ -1,6 +1,8 @@
-from typing import Callable
+from typing import Callable, List
 
+from palantir.metrics import Metrics
 from palantir.simulation import Simulation
+
 
 class Palantir:
 
@@ -12,7 +14,6 @@ class Palantir:
         self.simulation_factory = simulation_factory
         self.simulations_number = simulations_number
 
-    def run(self):
+    def run(self) -> List[Metrics]:
         simulations = [self.simulation_factory() for _ in range(self.simulations_number)]
-        for simulation in simulations:
-            simulation.run()
+        return [simulation.run() for simulation in simulations]

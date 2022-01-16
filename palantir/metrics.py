@@ -1,45 +1,66 @@
-from collections import defaultdict
 from enum import Enum
-from typing import Dict, List, Tuple
+from typing import Dict, List, NewType, Tuple
 
 from palantir.clock import Clock
 from palantir.types import Timestamp
 
 
 class Metric(Enum):
-    CLOSED_WITH_LP_LOSS = "closed_with_lp_loss"
-    CLOSED_WITH_TRADER_LOSS = "closed_with_trader_loss"
-    CLOSED_WITH_TRADER_PROFIT = "closed_with_trader_profit"
     INSUFFICIENT_LIQUIDITY = "insufficient_liquidity"
-    SLIPPAGE_VIOLATION = "slippage_violation"
+    POSITION_CLOSED = "position_closed"
+    POSITION_OPENED = "position_opened"
     TRADE_FAILED = "trade_failed"
+
+
+Metrics = NewType("Metrics", Dict[Metric, Dict[Timestamp, List[float]]])
+
+
+class MetricsAggregator:
+    def aggregate(self, samples: List[float]) -> float:
+        ...
+
+
+class MetricsAggregatorSum(MetricsAggregator):
+    def aggregate(self, samples: List[float]) -> float:
+        return sum(samples)
+
+
+class MetricsAggregatorAvg(MetricsAggregator):
+    def aggregate(self, samples: List[float]) -> float:
+        return sum(samples) / len(samples)
+
+
+class MetricsAggregatorMax(MetricsAggregator):
+    def aggregate(self, samples: List[float]) -> float:
+        return max(samples)
+
+
+class MetricsAggregatorMin(MetricsAggregator):
+    def aggregare(self, samples: List[float]) -> float:
+        return min(samples)
+
+
+def make_timeseries(metrics: Metrics, metric: Metric, aggregator: MetricsAggregator, periods: int) -> List[float]:
+    return [
+        aggregator.aggregate(metrics[metric][t])
+        if metric in metrics and t in metrics[metric] else 0.0
+        for t in range(periods)
+    ]
 
 
 class MetricsLogger:
     clock: Clock
-    metrics: Dict[Tuple[Timestamp, Metric], List[float]] = defaultdict(lambda: [])
+    metrics: Metrics
 
     def __init__(self, clock: Clock):
         self.clock = clock
+        self.metrics = Metrics({})
 
     def log(self, metric: Metric, sample: float=1.0) -> None:
-        self.metrics[self.clock.time, metric].append(sample)
+        if metric not in self.metrics:
+            self.metrics[metric] = {}
 
+        if self.clock.time not in self.metrics[metric]:
+            self.metrics[metric][self.clock.time] = []
 
-class MetricsAggregator:
-
-    @staticmethod
-    def sum(samples: List[float]) -> float:
-        return sum(samples)
-
-    @staticmethod
-    def avg(samples: List[float]) -> float:
-        return sum(samples) / len(samples)
-
-    @staticmethod
-    def max(samples: List[float]) -> float:
-        return max(samples)
-
-    @staticmethod
-    def min(samples: List[float]) -> float:
-        return min(samples)
+        self.metrics[metric][self.clock.time].append(sample)

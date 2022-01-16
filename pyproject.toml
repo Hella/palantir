@@ -12,6 +12,7 @@ SQLAlchemy = "^1.4.27"
 names = "^0.3.0"
 matplotlib = "^3.5.1"
 jupyter = "^1.0.0"
+numpy = "^1.22.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
