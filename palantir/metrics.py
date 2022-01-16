@@ -7,6 +7,7 @@ from palantir.types import Timestamp
 
 class Metric(Enum):
     INSUFFICIENT_LIQUIDITY = "insufficient_liquidity"
+    INSURANCE_POOL_LIQUIDITY_DAI = "insurance_pool_liquidity_dai"
     POSITION_CLOSED = "position_closed"
     POSITION_OPENED = "position_opened"
     TRADE_FAILED = "trade_failed"

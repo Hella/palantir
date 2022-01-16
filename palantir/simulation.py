@@ -3,7 +3,7 @@ from typing import Dict, List
 
 from palantir.clock import Clock
 from palantir.ithil import Ithil
-from palantir.metrics import Metrics
+from palantir.metrics import Metric, Metrics
 from palantir.oracle import PriceOracle
 from palantir.trader import Trader
 from palantir.types import Account, Currency
@@ -35,5 +35,8 @@ class Simulation:
                         position = self.ithil.positions[position_id]
                         trader_pl, liquidator_pl = self.ithil.liquidate_position(position_id)
                         trader.liquidity[position.owed_token] += trader_pl
-                        # TODO log liquidator pl
+            self.ithil.metrics_logger.log(
+                Metric.INSURANCE_POOL_LIQUIDITY_DAI,
+                self.ithil.insurance_pool[Currency("dai")],
+            )
         return self.ithil.metrics_logger.metrics
