@@ -11,6 +11,7 @@ class Metric(Enum):
     POSITION_CLOSED = "position_closed"
     POSITION_OPENED = "position_opened"
     TRADE_FAILED = "trade_failed"
+    VAULT_LIQUIDITY_DAI = "vault_liquidity_dai"
 
 
 Metrics = NewType("Metrics", Dict[Metric, Dict[Timestamp, List[float]]])

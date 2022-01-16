@@ -25,7 +25,7 @@ class Simulation:
         self.traders = traders
 
     def run(self) -> Metrics:
-        while self.clock.step():
+        while True:
             logging.info(f"TIME: {self.clock._time}")
             logging.info(f"POSITIONS: {self.ithil.active_positions}")
             for trader in self.traders:
@@ -35,8 +35,18 @@ class Simulation:
                         position = self.ithil.positions[position_id]
                         trader_pl, liquidator_pl = self.ithil.liquidate_position(position_id)
                         trader.liquidity[position.owed_token] += trader_pl
+
             self.ithil.metrics_logger.log(
                 Metric.INSURANCE_POOL_LIQUIDITY_DAI,
                 self.ithil.insurance_pool[Currency("dai")],
             )
+            self.ithil.metrics_logger.log(
+                Metric.VAULT_LIQUIDITY_DAI,
+                self.ithil.vaults[Currency("dai")],
+            )
+
+            should_continue = self.clock.step()
+            if not should_continue:
+                break
+
         return self.ithil.metrics_logger.metrics
