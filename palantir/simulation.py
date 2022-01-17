@@ -44,6 +44,10 @@ class Simulation:
                 Metric.VAULT_LIQUIDITY_DAI,
                 self.ithil.vaults[Currency("dai")],
             )
+            self.ithil.metrics_logger.log(
+                Metric.GOVERNANCE_FEES_ETHEREUM,
+                self.ithil.governance_pool[Currency("ethereum")],
+            )
 
             should_continue = self.clock.step()
             if not should_continue:
