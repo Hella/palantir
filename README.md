@@ -51,3 +51,10 @@ Deactivate the virtual environment
 ```bash
 exit
 ```
+
+### Run Jupyter Notebook
+
+```bash
+poetry shell
+jupyter notebook
+```
