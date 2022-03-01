@@ -35,7 +35,7 @@ def download_price_data(token: Currency, hours: int) -> None:
     prices = market_chart_range(
         coin_id=token,
         vs_currency=VS_CURRENCY,
-        from_timestamp=now - hours * SECONDS_IN_AN_HOUR,
+        from_timestamp=now - (hours + 1) * SECONDS_IN_AN_HOUR,
         to_timestamp=now,
     )
 
