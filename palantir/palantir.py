@@ -1,4 +1,4 @@
-from multiprocessing import Pool
+from multiprocess import Pool
 from typing import Callable, List
 
 from palantir.metrics import Metrics

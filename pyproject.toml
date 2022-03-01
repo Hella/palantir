@@ -13,6 +13,7 @@ names = "^0.3.0"
 matplotlib = "^3.5.1"
 jupyter = "^1.0.0"
 numpy = "^1.22.1"
+multiprocess = "^0.70.12"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
